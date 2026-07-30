@@ -1,0 +1,23 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# The licensed Avenir Arabic file is dropped in by hand, never committed.
+src/assets/fonts/*.otf
+src/assets/fonts/*.ttf
+src/assets/fonts/*.woff
+src/assets/fonts/*.woff2

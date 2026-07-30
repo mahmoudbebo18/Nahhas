@@ -1,0 +1,173 @@
+/**
+ * Every call to the field_portal API, as TanStack Query hooks.
+ *
+ * Reads are cached with a short stale time: an engineer drills in, backs out
+ * and drills again constantly, and re-fetching a project list on every back
+ * press wastes site bandwidth. Writes never cache — each one is a live POST,
+ * and on success we invalidate nothing except what a new line could change.
+ */
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, qs } from '@/lib/apiClient'
+import { ENTRY_TYPES } from './entryTypes'
+import { toPayload } from '@/lib/files'
+
+/* -- cache keys ----------------------------------------------------------- */
+
+export const qk = {
+  whoami: ['whoami'],
+  projects: ['projects'],
+  levels: (projectId) => ['project', projectId, 'levels'],
+  items: (projectId, level) => ['project', projectId, 'level', level, 'items'],
+  legacyTasks: (projectId) => ['project', projectId, 'tasks'],
+  subtasks: (taskId) => ['item', taskId, 'subtasks'],
+  products: (taskId, type) => ['subtask', taskId, 'products', type],
+}
+
+// Site data changes on the hour, not the second. Five minutes keeps the walk
+// instant while still picking up a foreman's new sub-task within a coffee break.
+const LIST_STALE = 5 * 60 * 1000
+
+/* -- auth ----------------------------------------------------------------- */
+
+/**
+ * Validates a key without touching the stored one — used by the setup screen
+ * so a bad paste never evicts a working key.
+ */
+export async function verifyKey(key) {
+  const res = await fetch(`${import.meta.env.VITE_API_BASE.replace(/\/+$/, '')}/auth/whoami`, {
+    headers: { Accept: 'application/json', Authorization: `Bearer ${key}` },
+    credentials: 'omit',
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok || (body && body.error)) {
+    const message =
+      body?.error ||
+      (res.status === 401
+        ? 'That API key was not accepted. Check it and try again.'
+        : `Sign-in failed (${res.status}).`)
+    throw new Error(message)
+  }
+  return body
+}
+
+export function useWhoami(enabled = true) {
+  return useQuery({
+    queryKey: qk.whoami,
+    queryFn: ({ signal }) => api.get('/auth/whoami', { signal }),
+    enabled,
+    staleTime: 15 * 60 * 1000,
+    retry: (count, err) => !err?.isAuth && count < 2,
+  })
+}
+
+/* -- the level walk ------------------------------------------------------- */
+
+export function useProjects() {
+  return useQuery({
+    queryKey: qk.projects,
+    queryFn: ({ signal }) => api.get('/projects', { signal }),
+    staleTime: LIST_STALE,
+    select: (data) => data?.projects ?? [],
+  })
+}
+
+/**
+ * Levels for a project. `level_aware:false` (a legacy project) comes back with
+ * an empty `levels` array — callers branch to the flat task tree instead.
+ */
+export function useLevels(projectId) {
+  return useQuery({
+    queryKey: qk.levels(projectId),
+    queryFn: ({ signal }) => api.get(`/projects/${projectId}/levels`, { signal }),
+    enabled: Boolean(projectId),
+    staleTime: LIST_STALE,
+  })
+}
+
+export function useLevelItems(projectId, level) {
+  return useQuery({
+    queryKey: qk.items(projectId, level),
+    queryFn: ({ signal }) => api.get(`/levels/${projectId}/${level}/items`, { signal }),
+    enabled: Boolean(projectId && level),
+    staleTime: LIST_STALE,
+  })
+}
+
+export function useSubtasks(taskId) {
+  return useQuery({
+    queryKey: qk.subtasks(taskId),
+    queryFn: ({ signal }) => api.get(`/items/${taskId}/subtasks`, { signal }),
+    enabled: Boolean(taskId),
+    staleTime: LIST_STALE,
+  })
+}
+
+/** Legacy (non-level-aware) projects: one flat tree, drilled by parent_id. */
+export function useLegacyTasks(projectId, enabled = true) {
+  return useQuery({
+    queryKey: qk.legacyTasks(projectId),
+    queryFn: ({ signal }) => api.get(`/projects/${projectId}/tasks`, { signal }),
+    enabled: Boolean(projectId) && enabled,
+    staleTime: LIST_STALE,
+  })
+}
+
+/* -- products for an entry form ------------------------------------------- */
+
+export function useProducts(taskId, entryType) {
+  const param = ENTRY_TYPES[entryType]?.productParam
+  return useQuery({
+    queryKey: qk.products(taskId, param),
+    queryFn: ({ signal }) =>
+      api.get(`/subtasks/${taskId}/products${qs({ type: param })}`, { signal }),
+    enabled: Boolean(taskId && param),
+    staleTime: LIST_STALE,
+  })
+}
+
+/* -- writes --------------------------------------------------------------- */
+
+/**
+ * One mutation for all four entry types; the caller passes the already-shaped
+ * body. Attachments are normalised here so no form can leak a preview URL.
+ *
+ * Writes are never retried automatically — a silent duplicate material line is
+ * far worse than making the engineer press "Try again".
+ */
+export function useCreateEntry(taskId, entryType) {
+  const queryClient = useQueryClient()
+  const path = ENTRY_TYPES[entryType]?.postPath
+
+  return useMutation({
+    mutationKey: ['entry', taskId, entryType],
+    retry: false,
+    mutationFn: ({ attachments, ...body }) => {
+      const payload = { ...body }
+      if (attachments?.length) payload.attachments = toPayload(attachments)
+      return api.post(`/subtasks/${taskId}/${path}`, payload, { timeoutMs: 90000 })
+    },
+    onSuccess: () => {
+      // A new line can flip a sub-task's has_products / stage in the list
+      // behind us, so refresh it lazily for the next time we walk past.
+      queryClient.invalidateQueries({ queryKey: ['item'], exact: false })
+    },
+  })
+}
+
+/**
+ * Standalone photo upload. With `line_id` the photo is appended to that
+ * entry's attachments; without it, it attaches to the sub-task itself.
+ */
+export function useUploadPhoto(taskId) {
+  return useMutation({
+    mutationKey: ['photo', taskId],
+    retry: false,
+    mutationFn: ({ attachment, lineId }) => {
+      const { filename, data, mimetype } = attachment
+      const body = { filename, data, mimetype }
+      if (lineId) body.line_id = lineId
+      return api.post(`/subtasks/${taskId}/photo`, body, { timeoutMs: 90000 })
+    },
+  })
+}

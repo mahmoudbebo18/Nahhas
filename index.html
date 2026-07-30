@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0"
+    />
+    <meta name="theme-color" content="#06412a" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Nahhas Group — Field Engineer Data-Entry Portal" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Nahhas Field Portal</title>
+    <!--
+      Applied before first paint so a dark-theme user never sees a white flash.
+      Light is the default: we only opt in to dark when it was explicitly saved.
+    -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('nfp.theme')
+          var dark = saved === 'dark'
+          var root = document.documentElement
+          root.classList.toggle('dark', dark)
+          root.classList.toggle('light', !dark)
+
+          var lang = localStorage.getItem('nfp.lang') || 'en'
+          root.lang = lang
+          root.dir = lang === 'ar' ? 'rtl' : 'ltr'
+        } catch (e) {
+          /* private mode / storage disabled — fall through to light + en */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

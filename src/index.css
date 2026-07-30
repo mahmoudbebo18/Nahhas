@@ -1,0 +1,224 @@
+/* Inter, bundled locally via @fontsource — no Google Fonts request at runtime. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Design tokens
+   Brand colours (#06412a forest / #C05527 burnt orange) are constant. Only
+   the surfaces, text and the readability-lightened dark primary change.
+   Values are "R G B" triplets so Tailwind's /opacity modifiers work.
+   ========================================================================== */
+@layer base {
+  :root,
+  .light {
+    --c-bg: 250 249 246; /* #FAF9F6 */
+    --c-surface: 255 255 255; /* #FFFFFF */
+    --c-surface-2: 244 242 237; /* inset rows, skeletons */
+    --c-text: 10 10 10; /* #0A0A0A */
+    --c-text-muted: 90 92 88;
+    --c-text-subtle: 138 140 135;
+    --c-border: 226 223 215;
+    --c-border-strong: 203 199 189;
+
+    --c-primary: 6 65 42; /* #06412a */
+    --c-primary-hover: 9 90 58;
+    --c-primary-fg: 250 249 246;
+    --c-primary-soft: 232 240 236;
+
+    /* The brand bar keeps the true forest green in BOTH themes. The dark
+       primary below is lightened for use as a *foreground* colour; painting a
+       full-width header in it would put a glaring band across a black screen. */
+    --c-header: 6 65 42;
+    --c-header-fg: 250 249 246;
+
+    --c-accent: 192 85 39; /* #C05527 */
+    --c-accent-hover: 168 72 31;
+    --c-accent-fg: 255 255 255;
+    --c-accent-soft: 249 235 227;
+
+    --c-success: 21 128 61;
+    --c-danger: 185 28 28;
+    --c-warning: 180 83 9;
+
+    color-scheme: light;
+  }
+
+  .dark {
+    --c-bg: 10 10 10; /* #0A0A0A */
+    --c-surface: 22 22 22; /* #161616 */
+    --c-surface-2: 32 32 32;
+    --c-text: 250 249 246; /* #FAF9F6 */
+    --c-text-muted: 163 163 158;
+    --c-text-subtle: 115 115 112;
+    --c-border: 45 45 45;
+    --c-border-strong: 64 64 64;
+
+    /* #06412a is unreadable as text/icons on black — lightened to #3E9E6E. */
+    --c-primary: 62 158 110; /* #3E9E6E */
+    --c-primary-hover: 82 178 130;
+    --c-primary-fg: 10 10 10;
+    --c-primary-soft: 22 42 33;
+
+    /* …but as a header FILL the true brand green still works on black, and
+       keeps the app recognisably Nahhas in either theme. */
+    --c-header: 6 65 42;
+    --c-header-fg: 250 249 246;
+
+    --c-accent: 192 85 39; /* #C05527 — unchanged */
+    --c-accent-hover: 214 105 57;
+    --c-accent-fg: 255 255 255;
+    --c-accent-soft: 46 28 20;
+
+    --c-success: 74 222 128;
+    --c-danger: 248 113 113;
+    --c-warning: 251 191 36;
+
+    color-scheme: dark;
+  }
+
+  /* Avenir Arabic is dropped in by hand at src/assets/fonts/ and injected at
+     runtime by src/lib/fonts.js — see that file for why it isn't @font-face'd
+     here (the app must still build when the licensed file is absent). */
+
+  * {
+    @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    @apply bg-bg;
+    -webkit-text-size-adjust: 100%;
+    /* Never let a horizontal drag bounce the guided flow sideways. */
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply bg-bg font-sans text-text antialiased;
+    margin: 0;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+
+  /* Theme swap should glide, but only on the surfaces — animating `all`
+     makes every layout change feel laggy on a mid-range site phone. */
+  body,
+  .theme-tint {
+    transition:
+      background-color 260ms ease,
+      border-color 260ms ease,
+      color 260ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* iOS zooms the page when a focused input is under 16px. */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    font-size: 16px;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
+  }
+
+  /* Make the native date/time pickers usable in dark mode. */
+  .dark input[type='date']::-webkit-calendar-picker-indicator,
+  .dark input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(0.7);
+  }
+}
+
+@layer components {
+  /* -- Buttons ----------------------------------------------------------- */
+  .btn {
+    @apply inline-flex min-h-tap select-none items-center justify-center gap-2
+           rounded-xl px-5 text-[15px] font-semibold leading-none
+           transition-colors disabled:pointer-events-none disabled:opacity-45;
+  }
+  .btn-primary {
+    @apply btn bg-primary text-primary-fg hover:bg-primary-hover;
+  }
+  .btn-accent {
+    @apply btn bg-accent text-accent-fg hover:bg-accent-hover;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-text hover:bg-surface-2;
+  }
+  .btn-outline {
+    @apply btn border border-border-strong bg-surface text-text hover:bg-surface-2;
+  }
+
+  /* -- Surfaces ---------------------------------------------------------- */
+  .card {
+    @apply theme-tint rounded-2xl border border-border bg-surface shadow-card;
+  }
+
+  /* -- Form controls ----------------------------------------------------- */
+  .field-label {
+    @apply mb-1.5 block text-[13px] font-semibold uppercase tracking-wide text-muted;
+  }
+  .input {
+    @apply theme-tint block min-h-tap w-full rounded-xl border border-border
+           bg-surface px-4 text-text placeholder:text-subtle
+           focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+  }
+  textarea.input {
+    @apply py-3 leading-relaxed;
+  }
+
+  /* Tabular figures keep quantities and amounts from jittering as they type. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+}
+
+@layer utilities {
+  /* Logical-property helpers: these flip automatically under dir="rtl",
+     which is what keeps the whole app RTL-correct without per-screen work. */
+  .pb-safe {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  /* Chevrons and back arrows must mirror in RTL; icons are drawn LTR. */
+  [dir='rtl'] .rtl-flip {
+    transform: scaleX(-1);
+  }
+
+  /* Native date/time inputs keep their picker indicator on the right even
+     under dir="rtl", where it lands on top of our own leading icon. Drop
+     ours in RTL and give the value back its padding. */
+  [dir='rtl'] .rtl-hide {
+    display: none;
+  }
+  [dir='rtl'] .rtl-flush {
+    padding-inline-start: 1rem;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
