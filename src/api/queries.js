@@ -8,7 +8,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, qs } from '@/lib/apiClient'
+import { API_BASE, api, qs } from '@/lib/apiClient'
 import { ENTRY_TYPES } from './entryTypes'
 import { toPayload } from '@/lib/files'
 
@@ -31,23 +31,36 @@ const LIST_STALE = 5 * 60 * 1000
 /* -- auth ----------------------------------------------------------------- */
 
 /**
- * Validates a key without touching the stored one — used by the setup screen
- * so a bad paste never evicts a working key.
+ * Exchanges credentials for a bearer token: POST /auth/token.
+ *
+ * Deliberately a raw fetch rather than the shared `api` client — this is the
+ * one call that must NOT carry an Authorization header, since a stale token
+ * from a previous engineer could otherwise ride along. Nothing is stored
+ * here; the caller decides, so a failed attempt never evicts a working token.
+ *
+ * Errors carry a `code` so the screen can translate them. 401 is answered
+ * with a single generic message that never says which field was wrong.
  */
-export async function verifyKey(key) {
-  const res = await fetch(`${import.meta.env.VITE_API_BASE.replace(/\/+$/, '')}/auth/whoami`, {
-    headers: { Accept: 'application/json', Authorization: `Bearer ${key}` },
+export async function requestToken({ login, password }) {
+  const res = await fetch(`${API_BASE}/auth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     credentials: 'omit',
+    body: JSON.stringify({ login, password }),
   })
+
   const body = await res.json().catch(() => null)
-  if (!res.ok || (body && body.error)) {
-    const message =
-      body?.error ||
-      (res.status === 401
-        ? 'That API key was not accepted. Check it and try again.'
-        : `Sign-in failed (${res.status}).`)
-    throw new Error(message)
+
+  if (res.status === 401) {
+    throw Object.assign(new Error('invalid_credentials'), { code: 'invalid_credentials' })
   }
+
+  if (!res.ok || !body?.token || body?.error) {
+    // 400 (and anything else) surfaces the server's own message verbatim.
+    const message = body?.error || `Sign-in failed (${res.status}).`
+    throw Object.assign(new Error(message), { code: 'server' })
+  }
+
   return body
 }
 

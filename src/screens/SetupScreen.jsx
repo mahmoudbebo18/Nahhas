@@ -1,40 +1,57 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, ChevronDown, Eye, EyeOff, HelpCircle, KeyRound, LogIn } from 'lucide-react'
+import { AlertTriangle, Eye, EyeOff, KeyRound, LogIn } from 'lucide-react'
 import Screen from '@/components/Screen'
 import { Spinner } from '@/components/states'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
-import { verifyKey } from '@/api/queries'
+import { requestToken } from '@/api/queries'
 import { API_BASE, API_BASE_CONFIGURED } from '@/lib/apiClient'
 
 /**
  * The one-time sign-in.
  *
- * The key is validated against /auth/whoami *before* it is stored, so a typo
- * or a stale key never displaces a working one. On success the whoami payload
- * is cached as the engineer's identity for the rest of the session.
+ * Credentials are exchanged for a bearer token at POST /auth/token, and only
+ * a successful exchange stores anything — so a wrong password never displaces
+ * a working session. The token is kept under the same storage key the API
+ * client already reads, which is why nothing else in the app changes.
  */
 export default function SetupScreen() {
   const { t } = useI18n()
   const { signIn, expired } = useAuth()
-  const [key, setKey] = useState('')
+  const [login, setLogin] = useState('')
+  const [password, setPassword] = useState('')
   const [reveal, setReveal] = useState(false)
-  const [helpOpen, setHelpOpen] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
-  const login = useMutation({
-    mutationFn: (candidate) => verifyKey(candidate),
-    onSuccess: (who, candidate) => signIn(candidate, who),
+  const auth = useMutation({
+    mutationFn: (credentials) => requestToken(credentials),
+    // The response doubles as the identity payload (name, login,
+    // employee_id, allowed_project_ids); whoami refreshes it on load.
+    onSuccess: (data) => signIn(data.token, data),
   })
 
-  const trimmed = key.trim()
+  const trimmedLogin = login.trim()
+  const canSubmit = Boolean(trimmedLogin && password) && !auth.isPending
 
   function submit(e) {
     e.preventDefault()
-    if (!trimmed || login.isPending) return
-    login.mutate(trimmed)
+
+    const next = {}
+    if (!trimmedLogin) next.login = t('errLoginRequired')
+    if (!password) next.password = t('errPasswordRequired')
+    setFieldErrors(next)
+    if (Object.keys(next).length > 0 || auth.isPending) return
+
+    auth.mutate({ login: trimmedLogin, password })
   }
+
+  // 401 must never reveal which of the two fields was wrong.
+  const authMessage =
+    auth.error && (auth.error.code === 'invalid_credentials'
+      ? t('errInvalidCredentials')
+      : auth.error.message)
 
   return (
     <Screen className="max-w-md">
@@ -76,54 +93,87 @@ export default function SetupScreen() {
         )}
 
         <form onSubmit={submit} className="card p-5">
-          <label className="field-label" htmlFor="api-key">
-            {t('apiKeyLabel')}
+          <label className="field-label" htmlFor="login">
+            {t('loginLabel')}
+          </label>
+          <input
+            id="login"
+            type="text"
+            inputMode="email"
+            value={login}
+            onChange={(e) => {
+              setLogin(e.target.value)
+              setFieldErrors((f) => ({ ...f, login: undefined }))
+              auth.reset()
+            }}
+            placeholder={t('loginPlaceholder')}
+            autoComplete="username"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck="false"
+            dir="ltr"
+            className="input"
+          />
+          {fieldErrors.login && (
+            <p className="mt-1.5 text-[13px] font-medium text-danger" role="alert">
+              {fieldErrors.login}
+            </p>
+          )}
+
+          <label className="field-label mt-4" htmlFor="password">
+            {t('passwordLabel')}
           </label>
           <div className="relative">
             <input
-              id="api-key"
+              id="password"
               type={reveal ? 'text' : 'password'}
-              value={key}
+              value={password}
               onChange={(e) => {
-                setKey(e.target.value)
-                login.reset()
+                setPassword(e.target.value)
+                setFieldErrors((f) => ({ ...f, password: undefined }))
+                auth.reset()
               }}
-              placeholder={t('apiKeyPlaceholder')}
-              autoComplete="off"
+              placeholder={t('passwordPlaceholder')}
+              autoComplete="current-password"
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck="false"
               dir="ltr"
-              className="input pe-12 font-mono text-sm"
+              className="input pe-12"
             />
             <button
               type="button"
               onClick={() => setReveal((r) => !r)}
               className="absolute inset-y-0 end-0 flex w-12 items-center justify-center text-subtle hover:text-text"
-              aria-label={reveal ? 'Hide key' : 'Show key'}
+              aria-label={reveal ? t('hidePassword') : t('showPassword')}
             >
               {reveal ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
+          {fieldErrors.password && (
+            <p className="mt-1.5 text-[13px] font-medium text-danger" role="alert">
+              {fieldErrors.password}
+            </p>
+          )}
 
-          {login.isError && (
+          {auth.isError && (
             <motion.p
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="mt-2 text-[13px] font-medium text-danger"
+              className="mt-3 text-[13px] font-medium text-danger"
               role="alert"
             >
-              {login.error.message}
+              {authMessage}
             </motion.p>
           )}
 
           <motion.button
             type="submit"
-            whileTap={trimmed && !login.isPending ? { scale: 0.98 } : undefined}
-            disabled={!trimmed || login.isPending || !API_BASE_CONFIGURED}
+            whileTap={canSubmit ? { scale: 0.98 } : undefined}
+            disabled={!canSubmit || !API_BASE_CONFIGURED}
             className="btn-primary mt-4 w-full"
           >
-            {login.isPending ? (
+            {auth.isPending ? (
               <>
                 <Spinner className="h-5 w-5" />
                 {t('checking')}
@@ -141,29 +191,9 @@ export default function SetupScreen() {
           </p>
         </form>
 
-        <div className="card mt-4 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setHelpOpen((o) => !o)}
-            className="flex min-h-tap w-full items-center gap-2 px-4 text-start text-sm font-semibold"
-            aria-expanded={helpOpen}
-          >
-            <HelpCircle className="h-4 w-4 shrink-0 text-accent" aria-hidden />
-            <span className="flex-1">{t('keyHelpTitle')}</span>
-            <motion.span animate={{ rotate: helpOpen ? 180 : 0 }}>
-              <ChevronDown className="h-4 w-4 text-subtle" aria-hidden />
-            </motion.span>
-          </button>
-
-          <motion.div
-            initial={false}
-            animate={{ height: helpOpen ? 'auto' : 0, opacity: helpOpen ? 1 : 0 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-            className="overflow-hidden"
-          >
-            <p className="px-4 pb-4 text-[13px] leading-relaxed text-muted">{t('keyHelp')}</p>
-          </motion.div>
-        </div>
+        <p className="mt-4 text-center text-[13px] leading-relaxed text-muted">
+          {t('forgotPassword')}
+        </p>
 
         {API_BASE_CONFIGURED && (
           <p className="mt-4 text-center text-[11px] text-subtle" dir="ltr">

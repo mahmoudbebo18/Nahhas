@@ -60,23 +60,23 @@ Two deployment notes:
 
 ---
 
-## Signing in: creating an Odoo API key
+## Signing in
 
-Each engineer signs in once with their own Odoo API key. In Odoo:
+Each engineer signs in with their **Odoo email (or username) and password** —
+no API key to copy around. The screen posts them to `POST /auth/token`, which
+returns a bearer token.
 
-**top-right user menu → My Profile → Account Security → New API Key**
+Only a successful exchange stores anything, so a mistyped password never
+displaces a working session. The token is kept in `localStorage` on that device
+and sent as `Authorization: Bearer <token>` on every subsequent request. Tap the
+avatar in the top bar to see who you are signed in as, or to sign out (which
+also clears the cached data — important on a shared site tablet).
 
-Name it (e.g. "Field Portal — phone"), copy the key, and paste it into the
-portal's sign-in screen. **Odoo shows the key only once.**
-
-The portal validates it against `GET /auth/whoami` *before* storing it, so a
-typo never displaces a working key. It is kept in `localStorage` on that device
-and sent as `Authorization: Bearer <key>` on every request. Tap the avatar in
-the top bar to see who you are signed in as, or to sign out (which also clears
-the cached data — important on a shared site tablet).
-
-If a key is revoked in Odoo, the next request returns 401; the app drops the
-key and returns to sign-in with an explanation.
+A wrong email or password returns 401 and shows a single generic message that
+never reveals which of the two was wrong. If the token later expires or is
+revoked, the next request returns 401; the app drops it and returns to sign-in
+with an explanation. There is no password reset in the portal — the screen
+points the engineer at their administrator.
 
 ---
 
@@ -84,7 +84,7 @@ key and returns to sign-in with an explanation.
 
 | Screen | File | Route |
 |---|---|---|
-| Sign-in | [SetupScreen.jsx](src/screens/SetupScreen.jsx) | `GET /auth/whoami` |
+| Sign-in | [SetupScreen.jsx](src/screens/SetupScreen.jsx) | `POST /auth/token` (then `GET /auth/whoami` on every launch) |
 | Project picker | [ProjectsScreen.jsx](src/screens/ProjectsScreen.jsx) | `GET /projects` |
 | Level picker | [LevelsScreen.jsx](src/screens/LevelsScreen.jsx) | `GET /projects/<id>/levels` |
 | Item picker | [ItemsScreen.jsx](src/screens/ItemsScreen.jsx) | `GET /levels/<project_id>/<level>/items` |
