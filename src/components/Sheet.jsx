@@ -1,7 +1,51 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
+import { useIsWide } from '@/hooks/useIsWide'
+
+/**
+ * Enter on a spring — it is a gesture-like arrival and a little overshoot
+ * reads as physical. Leave on a short tween, because `AnimatePresence` keeps
+ * the node mounted until the animation *completes*, and a spring travelling
+ * a full sheet-height takes half a second to settle: the panel would still be
+ * gliding over a page that had already un-dimmed.
+ */
+function panelMotion({ reduce, wide }) {
+  if (reduce) {
+    return {
+      initial: { opacity: 0 },
+      animate: { opacity: 1, transition: { duration: 0.12 } },
+      exit: { opacity: 0, transition: { duration: 0.12 } },
+    }
+  }
+  // Centred: `y: 100%` would only drop it by its own height, so it used to
+  // wink out halfway down the screen. Scale and fade in place instead.
+  if (wide) {
+    return {
+      initial: { opacity: 0, scale: 0.96, y: 16 },
+      animate: {
+        opacity: 1,
+        scale: 1,
+        y: 0,
+        transition: { type: 'spring', stiffness: 440, damping: 34, mass: 0.8 },
+      },
+      exit: {
+        opacity: 0,
+        scale: 0.97,
+        y: 8,
+        transition: { duration: 0.16, ease: 'easeIn' },
+      },
+    }
+  }
+  return {
+    initial: { y: '100%' },
+    animate: { y: 0, transition: { type: 'spring', stiffness: 420, damping: 40, mass: 0.9 } },
+    // No opacity here: it previously faded to 0.6 and then cut, which read as
+    // a blink. A sheet that leaves the screen entirely doesn't need to fade.
+    exit: { y: '100%', transition: { duration: 0.26, ease: [0.32, 0, 0.67, 0] } },
+  }
+}
 
 /**
  * Bottom sheet — the mobile-first stand-in for a modal.
@@ -11,6 +55,10 @@ import { X } from 'lucide-react'
  * scrolls inside the sheet so the page behind never moves.
  */
 export default function Sheet({ open, onClose, title, children, footer }) {
+  const reduce = useReducedMotion()
+  const wide = useIsWide()
+  const panel = panelMotion({ reduce, wide })
+
   useEffect(() => {
     if (!open) return
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -35,9 +83,10 @@ export default function Sheet({ open, onClose, title, children, footer }) {
           <motion.div
             className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            animate={{ opacity: 1, transition: { duration: 0.2, ease: 'easeOut' } }}
+            // Held just long enough to still be dimming as the panel clears
+            // the edge; the two used to finish nowhere near each other.
+            exit={{ opacity: 0, transition: { duration: 0.22, ease: 'easeIn' } }}
             onClick={onClose}
           />
           <motion.div
@@ -45,12 +94,13 @@ export default function Sheet({ open, onClose, title, children, footer }) {
             aria-modal="true"
             aria-label={title}
             className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden
-                       rounded-t-3xl border border-border bg-surface shadow-sheet sm:rounded-3xl"
-            initial={{ y: '100%', opacity: 0.6 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0.6 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-            drag="y"
+                       rounded-t-3xl border border-border bg-surface shadow-sheet
+                       sm:rounded-3xl sm:shadow-modal"
+            {...panel}
+            // Drag-to-dismiss is a thumb gesture; on a centred desktop dialog
+            // it only fights text selection. (Reduced motion still keeps it —
+            // it is a way to close the sheet, not decoration.)
+            drag={wide ? false : 'y'}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.4 }}
             onDragEnd={(_, info) => {

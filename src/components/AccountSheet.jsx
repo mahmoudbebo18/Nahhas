@@ -52,10 +52,10 @@ export default function AccountSheet({ open, onClose }) {
           </dl>
         )}
 
-        <p className="mt-4 flex items-start gap-2 rounded-xl bg-surface-2 p-3 text-[13px] leading-relaxed text-muted">
+        {/* <p className="mt-4 flex items-start gap-2 rounded-xl bg-surface-2 p-3 text-[13px] leading-relaxed text-muted">
           <KeyRound className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {t('keyStoredNote')}
-        </p>
+        </p> */}
 
         <button
           type="button"

@@ -146,10 +146,13 @@
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
   }
 
-  /* Make the native date/time pickers usable in dark mode. */
+  /* Tone the native date/time picker indicator down to roughly `text-subtle`.
+     Opacity ONLY — no invert. `.dark` declares `color-scheme: dark`, so the
+     browser already draws this glyph light; inverting it a second time is
+     what turned it black-on-black. */
   .dark input[type='date']::-webkit-calendar-picker-indicator,
   .dark input[type='datetime-local']::-webkit-calendar-picker-indicator {
-    filter: invert(1) opacity(0.7);
+    opacity: 0.7;
   }
 }
 
@@ -206,6 +209,12 @@
   }
   .pt-safe {
     padding-top: env(safe-area-inset-top, 0px);
+  }
+  /* Toasts hang off the top edge, so they need the notch AND a gap — the
+     mirror of .pb-safe. Written out here rather than as an arbitrary value
+     because Tailwind's extractor does not pick `calc(env(…))` out of JSX. */
+  .pt-safe-3 {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
   }
   /* Chevrons and back arrows must mirror in RTL; icons are drawn LTR. */
   [dir='rtl'] .rtl-flip {

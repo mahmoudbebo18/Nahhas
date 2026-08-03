@@ -1,34 +1,23 @@
 import { motion } from 'framer-motion'
-import { CalendarDays, Clock } from 'lucide-react'
+import DatePicker from './DatePicker'
 import { useI18n } from '@/context/I18nContext'
 import { nowRounded, todayISO } from '@/lib/datetime'
 
 /**
- * Native date / datetime-local inputs plus a quick-set button.
+ * Date / date-and-time fields, plus a quick-set button.
  *
- * Native pickers beat any JS calendar here: they are already localised, they
- * are the control the engineer's thumb knows, and they work offline-of-the-
- * -bundle. The "Now"/"Today" button covers the overwhelmingly common case in
- * one tap — most entries are logged as they happen.
+ * These used to be bare native inputs. Native pickers still win on *time* —
+ * see the note in DatePicker — but the native calendar could not be themed and
+ * ignored the app's own language toggle, so the date half is ours now. The
+ * "Now"/"Today" button stays: most entries are logged as they happen, and one
+ * tap should still cover that without opening anything.
  */
 
 export function DateField({ id, value, onChange }) {
   const { t } = useI18n()
   return (
     <div className="flex gap-2">
-      <div className="relative flex-1">
-        <CalendarDays
-          className="rtl-hide pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-subtle"
-          aria-hidden
-        />
-        <input
-          id={id}
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="input tnum rtl-flush ps-9"
-        />
-      </div>
+      <DatePicker id={id} value={value} onChange={onChange} />
       <QuickSet onClick={() => onChange(todayISO())} label={t('today')} />
     </div>
   )
@@ -38,20 +27,7 @@ export function DateTimeField({ id, value, onChange, min }) {
   const { t } = useI18n()
   return (
     <div className="flex gap-2">
-      <div className="relative flex-1">
-        <Clock
-          className="rtl-hide pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-subtle"
-          aria-hidden
-        />
-        <input
-          id={id}
-          type="datetime-local"
-          value={value}
-          min={min}
-          onChange={(e) => onChange(e.target.value)}
-          className="input tnum rtl-flush ps-9"
-        />
-      </div>
+      <DatePicker id={id} value={value} onChange={onChange} min={min} withTime />
       <QuickSet onClick={() => onChange(nowRounded())} label={t('now')} />
     </div>
   )

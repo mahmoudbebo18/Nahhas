@@ -21,7 +21,7 @@ export default function Screen({ children, title, lead, className = '', actions 
       className={`mx-auto w-full max-w-2xl px-4 pb-safe pt-4 ${className}`}
     >
       {(title || actions) && (
-        <header className="mb-4 flex items-start gap-3">
+        <header className="mb-4 flex items-center gap-3">
           <div className="min-w-0 flex-1">
             {title && <h1 className="text-xl font-bold leading-tight">{title}</h1>}
             {lead && <p className="mt-1 text-sm leading-relaxed text-muted">{lead}</p>}

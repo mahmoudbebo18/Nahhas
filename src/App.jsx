@@ -34,12 +34,39 @@ import { useWhoami } from '@/api/queries'
  *
  *   /entries
  *   /entries/:lineId/edit                 ← correct a draft before sending
+ *
+ * and sign-in, which is the only route reachable while signed out:
+ *
+ *   /signin
  */
+const SIGN_IN = '/signin'
+
 export default function App() {
-  const { isAuthed } = useAuth()
+  const { isAuthed, expired } = useAuth()
   const location = useLocation()
 
-  if (!isAuthed) return <SetupScreen />
+  // Sign-in has a URL of its own. Rendering it *in place of* the routes left
+  // the address bar still reading /projects — naming a page the signed-out
+  // engineer cannot actually see, and one the browser would then offer back
+  // from history as though the session were live.
+  if (!isAuthed) {
+    if (location.pathname === SIGN_IN) return <SetupScreen />
+    return (
+      <Navigate
+        to={SIGN_IN}
+        replace
+        // A session that died mid-task resumes where it left off. An explicit
+        // sign-out does not: this is a shared site tablet, and the next
+        // engineer must not land inside the previous one's work.
+        state={expired ? { from: location.pathname + location.search } : null}
+      />
+    )
+  }
+
+  // Just signed in — leave /signin behind rather than sitting on it.
+  if (location.pathname === SIGN_IN) {
+    return <Navigate to={location.state?.from || '/projects'} replace />
+  }
 
   return (
     <AppShell>

@@ -7,7 +7,7 @@ import { Spinner } from '@/components/states'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
 import { requestToken } from '@/api/queries'
-import { API_BASE, API_BASE_CONFIGURED } from '@/lib/apiClient'
+import { API_BASE_CONFIGURED } from '@/lib/apiClient'
 
 /**
  * The one-time sign-in.
@@ -184,20 +184,14 @@ export default function SetupScreen() {
             )}
           </motion.button>
 
-          <p className="mt-3 text-center text-[12px] leading-relaxed text-subtle">
+          {/* <p className="mt-3 text-center text-[12px] leading-relaxed text-subtle">
             {t('keyStoredNote')}
-          </p>
+          </p> */}
         </form>
 
         <p className="mt-4 text-center text-[13px] leading-relaxed text-muted">
           {t('forgotPassword')}
         </p>
-
-        {API_BASE_CONFIGURED && (
-          <p className="mt-4 text-center text-[11px] text-subtle">
-            {API_BASE}
-          </p>
-        )}
       </motion.div>
     </Screen>
   )

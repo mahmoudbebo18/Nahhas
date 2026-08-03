@@ -73,7 +73,7 @@ export function ErrorState({ error, onRetry, compact = false }) {
       }`}
       role="alert"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-danger/12 text-danger">
+      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-danger/10 text-danger">
         <Icon className="h-5 w-5" aria-hidden />
       </div>
       <div>

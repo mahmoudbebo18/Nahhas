@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react'
 
 /** Brief, non-blocking confirmations. Errors that need a decision get a
@@ -8,10 +8,16 @@ import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react'
 const ToastContext = createContext(null)
 
 const ICONS = { success: CheckCircle2, error: AlertTriangle, info: Info }
+
+/* A toast is most often raised at the moment a sheet closes ("saved", then the
+ * sheet slides away), so it has to stay legible on top of the sheet's dimmed
+ * backdrop as well as on the plain page. That rules out a translucent tint:
+ * the card is an opaque surface, and the tone lives in the icon chip and the
+ * border instead of in the fill and the body text. */
 const TONES = {
-  success: 'border-success/30 bg-success/10 text-success',
-  error: 'border-danger/30 bg-danger/10 text-danger',
-  info: 'border-border bg-surface-2 text-text',
+  success: { chip: 'bg-success/20 text-success', edge: 'border-success/40' },
+  error: { chip: 'bg-danger/20 text-danger', edge: 'border-danger/40' },
+  info: { chip: 'bg-surface-2 text-muted', edge: 'border-border-strong' },
 }
 
 export function ToastProvider({ children }) {
@@ -50,40 +56,75 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
+      {/* Above the sheet (z-50) with headroom, and clear of the notch. */}
       <div
-        className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex flex-col items-center gap-2 px-3 pt-3"
+        className="pointer-events-none fixed inset-x-0 top-0 z-[70] flex flex-col items-center
+                   gap-2.5 px-3 pt-safe-3"
         role="status"
         aria-live="polite"
       >
         <AnimatePresence initial={false}>
-          {toasts.map((t) => {
-            const Icon = ICONS[t.tone]
-            return (
-              <motion.div
-                key={t.id}
-                layout
-                initial={{ opacity: 0, y: -16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -12, scale: 0.97 }}
-                transition={{ type: 'spring', stiffness: 460, damping: 34 }}
-                className={`pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-xl border px-4 py-3 shadow-raised backdrop-blur ${TONES[t.tone]}`}
-              >
-                <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                <p className="flex-1 text-sm font-medium leading-snug">{t.message}</p>
-                <button
-                  type="button"
-                  onClick={() => dismiss(t.id)}
-                  className="-me-1 rounded-lg p-1 opacity-70 hover:opacity-100"
-                  aria-label="Dismiss"
-                >
-                  <X className="h-4 w-4" aria-hidden />
-                </button>
-              </motion.div>
-            )
-          })}
+          {toasts.map((t) => (
+            <ToastCard key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+          ))}
         </AnimatePresence>
       </div>
     </ToastContext.Provider>
+  )
+}
+
+function ToastCard({ toast, onDismiss }) {
+  const reduce = useReducedMotion()
+  const Icon = ICONS[toast.tone]
+  const tone = TONES[toast.tone]
+
+  // Drops in on a spring, but leaves on a short tween: an exit spring settles
+  // slowly, and a toast that is on its way out should already be gone.
+  const motionProps = reduce
+    ? {
+        initial: { opacity: 0 },
+        animate: { opacity: 1, transition: { duration: 0.12 } },
+        exit: { opacity: 0, transition: { duration: 0.12 } },
+      }
+    : {
+        initial: { opacity: 0, y: -20, scale: 0.96 },
+        animate: {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          transition: { type: 'spring', stiffness: 480, damping: 32, mass: 0.7 },
+        },
+        exit: {
+          opacity: 0,
+          y: -12,
+          scale: 0.97,
+          transition: { duration: 0.16, ease: 'easeIn' },
+        },
+      }
+
+  return (
+    <motion.div
+      layout="position"
+      {...motionProps}
+      className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl
+                  border bg-surface py-2.5 pe-2 ps-3 shadow-overlay ${tone.edge}`}
+    >
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone.chip}`}
+      >
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <p className="flex-1 text-sm font-medium leading-snug text-text">{toast.message}</p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-subtle
+                   transition-colors hover:bg-surface-2 hover:text-text"
+        aria-label="Dismiss"
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
+    </motion.div>
   )
 }
 

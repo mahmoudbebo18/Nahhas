@@ -57,7 +57,13 @@ export default function NumberStepper({
             if (raw === '' || /^\d*\.?\d*$/.test(raw)) onChange(raw)
           }}
           onFocus={(e) => e.target.select()}
-          className="tnum w-full min-w-0 border-0 bg-transparent px-2 text-center text-lg font-semibold text-text outline-none placeholder:text-subtle"
+          // The wrapper already draws the focus ring around the whole control
+          // (`focus-within` above), so the global :focus-visible ring would
+          // land a second, boxier one inside it. Cancel it here only — focus
+          // stays just as visible, on the element that reads as the field.
+          className="tnum w-full min-w-0 border-0 bg-transparent px-2 text-center text-lg
+                     font-semibold text-text outline-none placeholder:text-subtle
+                     focus-visible:ring-0 focus-visible:ring-offset-0"
         />
         {suffix && (
           <span className="pe-3 text-sm font-medium text-muted" aria-hidden>

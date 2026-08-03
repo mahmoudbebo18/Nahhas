@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Pencil, Trash2 } from 'lucide-react'
+import { ListTree, Pencil, Trash2 } from 'lucide-react'
 import { ENTRY_TYPES } from '@/api/entryTypes'
 import { useI18n } from '@/context/I18nContext'
 import Bidi from './Bidi'
@@ -12,12 +12,28 @@ import { formatDate, formatDurationHours } from '@/lib/datetime'
  * Draft rows carry Edit / Delete; confirmed rows are inert — once the office
  * can see a number, changing it silently from a phone is not something this
  * portal should be able to do.
+ *
+ * `showContext` puts the sub-task the entry was logged against on the card.
+ * Drafts don't need it — they are grouped under that heading already — but a
+ * flat history list otherwise reads as a pile of quantities with no answer to
+ * "which sub-task was this?".
  */
-export default function EntryCard({ entry, index = 0, readOnly = false, onEdit, onDelete }) {
+export default function EntryCard({
+  entry,
+  index = 0,
+  readOnly = false,
+  showContext = false,
+  onEdit,
+  onDelete,
+}) {
   const { t, lang } = useI18n()
   const config = ENTRY_TYPES[entry.type] ?? {}
   const Icon = config.icon
   const accent = config.tone === 'accent'
+
+  // Sub-task first: it is the one the engineer actually chose. Building and
+  // project trail behind it and are the first to be truncated away.
+  const context = [entry.task, entry.building, entry.project].filter(Boolean).join(' · ')
 
   // Only the facts that type actually records — a material row has no
   // duration, an equipment row has no amount.
@@ -67,6 +83,15 @@ export default function EntryCard({ entry, index = 0, readOnly = false, onEdit, 
               </span>
             )}
           </div>
+
+          {showContext && context && (
+            <p className="mt-1 flex items-center gap-1.5 text-[12px] text-muted">
+              <ListTree className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
+              <span className="truncate">
+                <Bidi>{context}</Bidi>
+              </span>
+            </p>
+          )}
 
           {facts.length > 0 && (
             <p className="tnum mt-1 text-[13px] text-muted">{facts.join(' · ')}</p>

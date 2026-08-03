@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCheck, ClipboardCheck, Inbox, Send, Trash2 } from 'lucide-react'
+import { CheckCheck, ClipboardCheck, FolderOpen, Inbox, Send, Trash2 } from 'lucide-react'
 import Screen from '@/components/Screen'
 import Sheet from '@/components/Sheet'
 import EntryCard from '@/components/EntryCard'
@@ -88,6 +88,20 @@ export default function EntriesScreen() {
                 icon={Inbox}
                 title={t('emptyDrafts')}
                 body={t('emptyDraftsHint')}
+                // An empty basket is a dead end otherwise: the only way on is
+                // back into the walk, so offer it here rather than making the
+                // engineer find the top bar.
+                action={
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => navigate('/projects')}
+                    className="btn-primary mt-1"
+                  >
+                    <FolderOpen className="h-4 w-4" aria-hidden />
+                    {t('goToProjects')}
+                  </motion.button>
+                }
               />
             ) : (
               <div className="space-y-4">
@@ -133,7 +147,8 @@ export default function EntriesScreen() {
               <ul className="space-y-2.5">
                 {sent.map((entry, i) => (
                   <li key={entry.line_id}>
-                    <EntryCard entry={entry} index={i} readOnly />
+                    {/* Flat list, so each row carries its own sub-task. */}
+                    <EntryCard entry={entry} index={i} readOnly showContext />
                   </li>
                 ))}
               </ul>
