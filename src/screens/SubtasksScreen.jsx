@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ClipboardList, LayoutTemplate, PackageCheck } from 'lucide-react'
+import { ClipboardList, LayoutTemplate, PackageCheck, PackageX } from 'lucide-react'
 import Screen from '@/components/Screen'
 import ListRow from '@/components/ListRow'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
+import { hasNothingToEnter } from '@/api/entryTypes'
 import { useSubtasks } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
@@ -70,30 +71,52 @@ export default function SubtasksScreen() {
       )}
 
       <ul className="space-y-2.5">
-        {subtasks.map((subtask, i) => (
-          <li key={subtask.id}>
-            <ListRow
-              index={i}
-              title={subtask.name}
-              subtitle={humanise(subtask.stage || subtask.state) || undefined}
-              badges={[
-                subtask.has_products && {
-                  key: 'products',
-                  label: t('hasProducts'),
-                  tone: 'primary',
-                  icon: <PackageCheck className="h-3 w-3" aria-hidden />,
-                },
-                subtask.has_template && {
-                  key: 'template',
-                  label: t('fromTemplate'),
-                  tone: 'muted',
-                  icon: <LayoutTemplate className="h-3 w-3" aria-hidden />,
-                },
-              ].filter(Boolean)}
-              onClick={() => open(subtask)}
-            />
-          </li>
-        ))}
+        {subtasks.map((subtask, i) => {
+          // `available` counts what each entry type actually holds, so it —
+          // not has_products/has_template, which only say something is linked
+          // — decides whether this row leads anywhere the portal can write.
+          const barren = hasNothingToEnter(subtask.available)
+          return (
+            <li key={subtask.id}>
+              <ListRow
+                index={i}
+                title={subtask.name}
+                subtitle={humanise(subtask.stage || subtask.state) || undefined}
+                badges={
+                  // One honest badge beats "From template" next to "Nothing to
+                  // enter" — the template is exactly why it looked enterable.
+                  barren
+                    ? [
+                        {
+                          key: 'barren',
+                          label: t('nothingToEnter'),
+                          tone: 'muted',
+                          icon: <PackageX className="h-3 w-3" aria-hidden />,
+                        },
+                      ]
+                    : [
+                        subtask.has_products && {
+                          key: 'products',
+                          label: t('hasProducts'),
+                          tone: 'primary',
+                          icon: <PackageCheck className="h-3 w-3" aria-hidden />,
+                        },
+                        subtask.has_template && {
+                          key: 'template',
+                          label: t('fromTemplate'),
+                          tone: 'muted',
+                          icon: <LayoutTemplate className="h-3 w-3" aria-hidden />,
+                        },
+                      ].filter(Boolean)
+                }
+                // Still tappable: a photo can be attached to any sub-task, and
+                // that is the one thing these rows are still good for.
+                dimmed={barren}
+                onClick={() => open(subtask)}
+              />
+            </li>
+          )
+        })}
       </ul>
     </Screen>
   )

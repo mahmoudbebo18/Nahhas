@@ -21,6 +21,7 @@ export const qk = {
   items: (projectId, level) => ['project', projectId, 'level', level, 'items'],
   legacyTasks: (projectId) => ['project', projectId, 'tasks'],
   subtasks: (taskId) => ['item', taskId, 'subtasks'],
+  availability: (taskId) => ['subtask', taskId, 'availability'],
   products: (taskId, type) => ['subtask', taskId, 'products', type],
   entries: ['entries'],
 }
@@ -124,6 +125,25 @@ export function useLegacyTasks(projectId, enabled = true) {
     queryFn: ({ signal }) => api.get(`/projects/${projectId}/tasks`, { signal }),
     enabled: Boolean(projectId) && enabled,
     staleTime: LIST_STALE,
+  })
+}
+
+/**
+ * How many products each entry type holds for one sub-task, keyed by the
+ * API's own type names: GET /subtasks/<id>/availability.
+ *
+ * The sub-task list already embeds this map per child, but the entry hub is
+ * also reachable by deep link and survives a refresh, so it asks for its own
+ * copy rather than depending on having walked the list. One small response,
+ * cached for the same window as the walk.
+ */
+export function useSubtaskAvailability(taskId) {
+  return useQuery({
+    queryKey: qk.availability(taskId),
+    queryFn: ({ signal }) => api.get(`/subtasks/${taskId}/availability`, { signal }),
+    enabled: Boolean(taskId),
+    staleTime: LIST_STALE,
+    select: (data) => data?.available ?? null,
   })
 }
 

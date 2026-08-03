@@ -1,8 +1,14 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Camera, ChevronRight } from 'lucide-react'
+import { Camera, ChevronRight, PackageX } from 'lucide-react'
 import Screen from '@/components/Screen'
-import { ENTRY_ORDER, ENTRY_TYPES } from '@/api/entryTypes'
+import {
+  ENTRY_ORDER,
+  ENTRY_TYPES,
+  hasNothingToEnter,
+  isTypeEmpty,
+} from '@/api/entryTypes'
+import { useSubtaskAvailability } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
 import Bidi from '@/components/Bidi'
@@ -13,6 +19,11 @@ import Bidi from '@/components/Bidi'
  * Standing at one spot they will log material, then plant hours, then a
  * photo — so this screen, not the project list, is the centre of gravity of
  * the whole app. Four big tiles, one tap each.
+ *
+ * A tile whose type has no products set up on this sub-task is disabled here
+ * rather than opening on an empty state. Most level-aware sub-tasks are costed
+ * for labour alone, which the portal does not write, so without this the walk
+ * ends in a dead end that looks like a fault in the app.
  */
 
 const container = { animate: { transition: { staggerChildren: 0.05 } } }
@@ -27,7 +38,11 @@ export default function ActionScreen() {
   const { t } = useI18n()
   const { trail } = useTrail()
 
-  const subtaskName = trail.subtask?.taskId === taskId ? trail.subtask.name : null
+  // Route params are strings, the trail records the numeric id it got from
+  // JSON — compare as strings or the name never shows.
+  const subtaskName =
+    String(trail.subtask?.taskId ?? '') === String(taskId) ? trail.subtask.name : null
+  const available = useSubtaskAvailability(taskId).data
 
   return (
     <Screen title={t('logWork')}>
@@ -42,6 +57,18 @@ export default function ActionScreen() {
         </div>
       )}
 
+      {/* Photos need no products, so this says "nothing to log", not
+          "nothing to do" — the camera below stays live either way. */}
+      {hasNothingToEnter(available) && (
+        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-border bg-surface-2 px-4 py-3">
+          <PackageX className="mt-0.5 h-5 w-5 shrink-0 text-subtle" aria-hidden />
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold leading-snug">{t('nothingToEnterTitle')}</p>
+            <p className="mt-1 text-[12px] leading-snug text-muted">{t('nothingToEnterBody')}</p>
+          </div>
+        </div>
+      )}
+
       <motion.div
         variants={container}
         initial="initial"
@@ -51,18 +78,28 @@ export default function ActionScreen() {
         {ENTRY_ORDER.map((key) => {
           const { icon: Icon, tone } = ENTRY_TYPES[key]
           const accent = tone === 'accent'
+          const empty = isTypeEmpty(available, key)
           return (
             <motion.button
               key={key}
               variants={tile}
-              whileTap={{ scale: 0.96 }}
+              whileTap={empty ? undefined : { scale: 0.96 }}
+              disabled={empty}
               onClick={() => navigate(`/subtasks/${taskId}/${key}`)}
               className={`card flex min-h-[9.5rem] flex-col items-start justify-between p-4 text-start transition-colors
-                          active:bg-surface-2 sm:hover:border-border-strong`}
+                          ${
+                            empty
+                              ? 'opacity-55'
+                              : 'active:bg-surface-2 sm:hover:border-border-strong'
+                          }`}
             >
               <span
                 className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                  accent ? 'bg-accent-soft text-accent' : 'bg-primary-soft text-primary'
+                  empty
+                    ? 'bg-surface-2 text-subtle'
+                    : accent
+                      ? 'bg-accent-soft text-accent'
+                      : 'bg-primary-soft text-primary'
                 }`}
               >
                 <Icon className="h-6 w-6" aria-hidden />
@@ -70,7 +107,7 @@ export default function ActionScreen() {
               <span className="mt-3">
                 <span className="block text-[15px] font-bold leading-tight">{t(key)}</span>
                 <span className="mt-1 block text-[12px] leading-snug text-muted">
-                  {t(`${key}Hint`)}
+                  {empty ? t('typeNotSetUp') : t(`${key}Hint`)}
                 </span>
               </span>
             </motion.button>

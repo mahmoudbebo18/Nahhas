@@ -1,9 +1,10 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ChevronRight, FolderTree, ListTree } from 'lucide-react'
+import { ChevronRight, FolderTree, ListTree, PackageX } from 'lucide-react'
 import Screen from '@/components/Screen'
 import ListRow from '@/components/ListRow'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
+import { hasNothingToEnter } from '@/api/entryTypes'
 import { useLegacyTasks } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
@@ -68,10 +69,15 @@ export default function LegacyTasksScreen() {
 
   function open(task) {
     if (task.is_leaf) {
-      // A leaf is the work item entries hang off — same destination as the
-      // level-aware flow, so everything downstream is shared.
-      setStep('item', { taskId: task.id, name: task.name, code: task.code })
-      navigate(`/items/${task.id}/subtasks`)
+      // A legacy tree ends AT the logging point: the leaf IS the sub-task,
+      // not a work item with sub-tasks beneath it. Routing it to the sub-task
+      // list would ask for children a leaf cannot have by definition — an
+      // empty state every time, for every legacy project. Go straight to the
+      // entry hub, which is where the level-aware walk lands too.
+      const item = ancestors[ancestors.length - 1]
+      if (item) setStep('item', { taskId: item.id, name: item.name, code: item.code })
+      setStep('subtask', { taskId: task.id, name: task.name })
+      navigate(`/subtasks/${task.id}`)
       return
     }
     setParams({ parent: String(task.id) })
@@ -128,21 +134,36 @@ export default function LegacyTasksScreen() {
       )}
 
       <ul key={parent ?? 'root'} className="space-y-2.5">
-        {children.map((task, i) => (
-          <li key={task.id}>
-            <ListRow
-              index={i}
-              title={task.name}
-              subtitle={task.code || undefined}
-              badges={
-                task.is_leaf
-                  ? [{ key: 'leaf', label: t('items'), tone: 'accent' }]
-                  : undefined
-              }
-              onClick={() => open(task)}
-            />
-          </li>
-        ))}
+        {children.map((task, i) => {
+          // Leaves are the logging points, so they carry the same "is there
+          // anything here" answer the level-aware list shows on its sub-tasks.
+          const barren = task.is_leaf && hasNothingToEnter(task.available)
+          return (
+            <li key={task.id}>
+              <ListRow
+                index={i}
+                title={task.name}
+                subtitle={task.code || undefined}
+                badges={
+                  task.is_leaf
+                    ? [
+                        barren
+                          ? {
+                              key: 'barren',
+                              label: t('nothingToEnter'),
+                              tone: 'muted',
+                              icon: <PackageX className="h-3 w-3" aria-hidden />,
+                            }
+                          : { key: 'leaf', label: t('logHere'), tone: 'accent' },
+                      ]
+                    : undefined
+                }
+                dimmed={barren}
+                onClick={() => open(task)}
+              />
+            </li>
+          )
+        })}
       </ul>
     </Screen>
   )

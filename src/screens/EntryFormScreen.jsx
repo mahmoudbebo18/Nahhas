@@ -261,13 +261,15 @@ export default function EntryFormScreen() {
     create.reset()
   }
 
-  const subtaskName = trail.subtask?.taskId === taskId ? trail.subtask.name : null
+  // String-compared: the route param is a string, the trail holds a number.
+  const subtaskName =
+    String(trail.subtask?.taskId ?? '') === String(taskId) ? trail.subtask.name : null
   const Icon = config.icon
   const accentTile = config.tone === 'accent'
 
   return (
     <Screen>
-      <header className="mb-5 flex items-start gap-3">
+      <header className="mb-5 flex items-center gap-3">
         <span
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
             accentTile ? 'bg-accent-soft text-accent' : 'bg-primary-soft text-primary'

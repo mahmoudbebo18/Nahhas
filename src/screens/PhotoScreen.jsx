@@ -31,7 +31,9 @@ export default function PhotoScreen() {
   const [photos, setPhotos] = useState([])
   const [failed, setFailed] = useState(null)
 
-  const subtaskName = trail.subtask?.taskId === taskId ? trail.subtask.name : null
+  // String-compared: the route param is a string, the trail holds a number.
+  const subtaskName =
+    String(trail.subtask?.taskId ?? '') === String(taskId) ? trail.subtask.name : null
 
   async function submit(e) {
     e?.preventDefault()
@@ -61,7 +63,7 @@ export default function PhotoScreen() {
 
   return (
     <Screen>
-      <header className="mb-5 flex items-start gap-3">
+      <header className="mb-5 flex items-center gap-3">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-muted">
           <Camera className="h-6 w-6" aria-hidden />
         </span>

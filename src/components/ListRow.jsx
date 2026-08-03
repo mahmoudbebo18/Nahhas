@@ -47,6 +47,12 @@ export default function ListRow({
   leading,
   onClick,
   disabled = false,
+  /**
+   * Recede without being switched off — for a row that still leads somewhere
+   * useful but is not where the engineer is likely headed. `disabled` blocks
+   * the tap; this only lowers the row's voice.
+   */
+  dimmed = false,
   selected = false,
   index = 0,
 }) {
@@ -60,6 +66,7 @@ export default function ListRow({
       disabled={disabled}
       className={`card theme-tint flex w-full items-center gap-3 p-4 text-start
                   transition-colors disabled:opacity-50
+                  ${dimmed && !disabled ? 'opacity-60' : ''}
                   ${
                     selected
                       ? 'border-accent ring-2 ring-accent/25'
