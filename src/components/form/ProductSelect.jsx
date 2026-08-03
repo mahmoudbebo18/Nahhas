@@ -4,7 +4,8 @@ import { Check, ChevronDown, PackageSearch, Search } from 'lucide-react'
 import Sheet from '../Sheet'
 import { EmptyState, ErrorState, ListSkeleton } from '../states'
 import { useI18n } from '@/context/I18nContext'
-import { bidi, formatNumber, matches } from '@/lib/text'
+import Bidi from '../Bidi'
+import { formatNumber, matches } from '@/lib/text'
 
 /**
  * Product picker for the four entry forms.
@@ -44,8 +45,8 @@ export default function ProductSelect({ products, value, onChange, query, id }) 
         <span className="min-w-0 flex-1">
           {selected ? (
             <>
-              <span className="block truncate font-medium" {...bidi(selected.name)}>
-                {selected.name}
+              <span className="block truncate font-medium">
+                <Bidi>{selected.name}</Bidi>
               </span>
               {(selected.quantity || selected.uom) && (
                 <span className="mt-0.5 block text-[13px] text-muted">
@@ -115,8 +116,8 @@ export default function ProductSelect({ products, value, onChange, query, id }) 
                     }`}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium leading-snug" {...bidi(p.name)}>
-                        {p.name}
+                      <span className="block text-[15px] font-medium leading-snug">
+                        <Bidi>{p.name}</Bidi>
                       </span>
                       <span className="mt-0.5 block text-[13px] text-muted">
                         {t('plannedQty')}: <span className="tnum">{formatNumber(p.quantity)}</span>

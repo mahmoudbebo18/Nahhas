@@ -22,6 +22,7 @@ export const qk = {
   legacyTasks: (projectId) => ['project', projectId, 'tasks'],
   subtasks: (taskId) => ['item', taskId, 'subtasks'],
   products: (taskId, type) => ['subtask', taskId, 'products', type],
+  entries: ['entries'],
 }
 
 // Site data changes on the hour, not the second. Five minutes keeps the walk
@@ -163,6 +164,79 @@ export function useCreateEntry(taskId, entryType) {
     onSuccess: () => {
       // A new line can flip a sub-task's has_products / stage in the list
       // behind us, so refresh it lazily for the next time we walk past.
+      queryClient.invalidateQueries({ queryKey: ['item'], exact: false })
+      // …and it just landed in the review basket.
+      queryClient.invalidateQueries({ queryKey: qk.entries })
+    },
+  })
+}
+
+/* -- the review basket ---------------------------------------------------- */
+
+/**
+ * GET /entries — everything this engineer has logged.
+ *
+ * Drafts and history are fetched under separate keys on purpose. The top bar
+ * badge needs the draft count on every screen, and pulling a hundred rows of
+ * confirmed history alongside it on site LTE — over and over — is the kind of
+ * waste that makes a portal feel broken. `state` is 'draft' or 'confirmed'.
+ *
+ * No stale window: the whole point of the screen is that it agrees with what
+ * was just submitted.
+ */
+export function useMyEntries(state) {
+  return useQuery({
+    queryKey: [...qk.entries, state],
+    queryFn: ({ signal }) => api.get(`/entries${qs({ state })}`, { signal }),
+    staleTime: 0,
+  })
+}
+
+/**
+ * Number of unconfirmed entries, for the badge in the top bar. Shares its
+ * cache entry with the review screen's draft list — one request, not two.
+ */
+export function useDraftCount() {
+  const query = useMyEntries('draft')
+  return query.data?.draft_count ?? 0
+}
+
+export function useUpdateEntry() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: ({ lineId, ...body }) =>
+      api.post(`/entries/${lineId}/update`, body, { timeoutMs: 90000 }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.entries }),
+  })
+}
+
+export function useDeleteEntry() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: (lineId) => api.post(`/entries/${lineId}/delete`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.entries }),
+  })
+}
+
+/**
+ * POST /entries/confirm — submit the batch.
+ *
+ * Omitting `lineIds` confirms every draft the engineer holds, which is what
+ * "Confirm all" sends. The server treats already-confirmed ids as `skipped`
+ * rather than an error, so a retry after a timeout is safe.
+ */
+export function useConfirmEntries() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: (lineIds) =>
+      api.post('/entries/confirm', lineIds?.length ? { line_ids: lineIds } : {}, {
+        timeoutMs: 90000,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.entries })
       queryClient.invalidateQueries({ queryKey: ['item'], exact: false })
     },
   })

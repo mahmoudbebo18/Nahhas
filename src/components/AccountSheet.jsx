@@ -2,7 +2,7 @@ import { LogOut, KeyRound, Building2, Mail, FolderCheck } from 'lucide-react'
 import Sheet from './Sheet'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
-import { bidi } from '@/lib/text'
+import Bidi from './Bidi'
 
 /** Who am I, and how do I get out. Nothing else belongs here. */
 export default function AccountSheet({ open, onClose }) {
@@ -11,7 +11,10 @@ export default function AccountSheet({ open, onClose }) {
 
   const rows = [
     identity?.login && { icon: Mail, value: identity.login },
-    identity?.company_id && { icon: Building2, value: `Company #${identity.company_id}` },
+    identity?.company_id && {
+      icon: Building2,
+      value: `${t('companyRef')} ${identity.company_id}`,
+    },
     Array.isArray(identity?.allowed_project_ids) && {
       icon: FolderCheck,
       value: `${identity.allowed_project_ids.length} ${t('projects').toLowerCase()}`,
@@ -26,11 +29,14 @@ export default function AccountSheet({ open, onClose }) {
             {String(identity?.name ?? '?').trim().charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="truncate font-semibold" {...bidi(identity?.name)}>
-              {identity?.name ?? '—'}
+            <p className="truncate font-semibold">
+              <Bidi>{identity?.name}</Bidi>
+              {!identity?.name && '—'}
             </p>
             {identity?.employee_id && (
-              <p className="text-[13px] text-muted">Employee #{identity.employee_id}</p>
+              <p className="text-[13px] text-muted">
+                {t('employeeRef')} {identity.employee_id}
+              </p>
             )}
           </div>
         </div>

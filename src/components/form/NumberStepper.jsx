@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Minus, Plus } from 'lucide-react'
+import { toLatinDigits } from '@/lib/text'
 
 /**
  * Quantity/amount input with ± buttons.
@@ -49,9 +50,10 @@ export default function NumberStepper({
           value={value}
           placeholder={placeholder}
           onChange={(e) => {
-            // Accept digits, one separator, and normalise the Arabic keypad's
-            // comma so "12,5" doesn't silently become NaN on submit.
-            const raw = e.target.value.replace(/,/g, '.')
+            // Fold an Arabic keypad's ٠١٢ and "٫" to ASCII, and accept a comma
+            // as the separator, so "١٢,٥" doesn't silently become NaN — or,
+            // worse, get rejected keystroke by keystroke.
+            const raw = toLatinDigits(e.target.value).replace(/,/g, '.')
             if (raw === '' || /^\d*\.?\d*$/.test(raw)) onChange(raw)
           }}
           onFocus={(e) => e.target.select()}

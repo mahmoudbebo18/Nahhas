@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { LayoutGrid, Search } from 'lucide-react'
 import Screen from '@/components/Screen'
-import ListRow, { listStagger } from '@/components/ListRow'
+import ListRow from '@/components/ListRow'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { useLevelItems } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
@@ -90,10 +89,11 @@ export default function ItemsScreen() {
         <EmptyState icon={LayoutGrid} title={t('emptyItems')} />
       )}
 
-      <motion.ul variants={listStagger} initial="initial" animate="animate" className="space-y-2.5">
-        {filtered.map((item) => (
-          <motion.li key={item.wbs_build_id ?? item.task_id}>
+      <ul className="space-y-2.5">
+        {filtered.map((item, i) => (
+          <li key={item.wbs_build_id ?? item.task_id}>
             <ListRow
+              index={i}
               title={item.name}
               subtitle={contextLine(item)}
               meta={
@@ -104,9 +104,9 @@ export default function ItemsScreen() {
               onClick={() => open(item)}
               disabled={!item.task_id}
             />
-          </motion.li>
+          </li>
         ))}
-      </motion.ul>
+      </ul>
     </Screen>
   )
 }

@@ -16,6 +16,23 @@ cache of site data by design.
 
 ## Quick start (local Odoo)
 
+**One prerequisite on the Odoo side.** The local server must resolve to a
+single database on its own, or it answers 404 *"No database is selected"*
+before the route runs — which the browser reports as a CORS error. In your
+`odoo.conf`:
+
+```ini
+[options]
+db_name = Nahas-Staging-V1.0
+list_db = False
+```
+
+There is no client-side workaround: the `X-Odoo-Database` header exists, but a
+browser cannot send it. See [DEPLOYMENT.md](DEPLOYMENT.md#the-one-thing-to-understand-how-odoo-picks-a-database)
+for why, and `odoo.conf.example` in the **Nahhas-Group** repo for a full config.
+
+Then:
+
 ```bash
 npm install
 cp .env.example .env      # then set VITE_API_BASE to your local Odoo
@@ -25,18 +42,26 @@ npm run dev               # http://localhost:5173
 `.env` for local testing — match the port your Odoo actually listens on:
 
 ```
-VITE_API_BASE=http://localhost:8069/api/field_portal/v1
+VITE_API_BASE=http://localhost:8019/api/field_portal/v1
 ```
 
-The Vite dev server runs on `:5173`, so calls to `:8069` are **cross-origin**.
-The API's default `Access-Control-Allow-Origin: *` covers this — no proxy is
-configured or needed. Auth is a Bearer token, never a session cookie, so there
-is no credentialed-CORS complication.
+The Vite dev server runs on `:5173`, so calls to `:8019` are **cross-origin**.
+That is deliberate: it is the same request path production uses, so CORS
+mistakes surface on your machine instead of after deploy. The API's default
+`Access-Control-Allow-Origin: *` covers it — **no dev proxy is configured or
+needed**. Auth is a Bearer token, never a session cookie, so there is no
+credentialed-CORS complication.
 
 `npm run dev` binds to `0.0.0.0`, so you can open the LAN address it prints on
-a real phone and test the flow with an actual thumb and an actual camera.
+a real phone and test the flow with an actual thumb. Point `VITE_API_BASE` at
+the same LAN IP — the phone cannot resolve `localhost`. Note that the camera
+needs a secure context, so photo capture only works over `localhost` or HTTPS,
+not a plain-HTTP LAN address.
 
 ### Production
+
+Full guide, including the three deployment shapes and a go-live checklist:
+**[DEPLOYMENT.md](DEPLOYMENT.md)**. The short version:
 
 ```
 VITE_API_BASE=https://erp.nahas.group/api/field_portal/v1
@@ -49,14 +74,20 @@ npm run build        # → dist/
 npm run preview      # optional local check of the built bundle
 ```
 
-Two deployment notes:
+Deployment notes:
 
 - `VITE_API_BASE` is inlined at **build** time, not read at runtime. A
-  production build must be made with the production value in `.env`.
+  production build must be made with the production value present — put it in
+  `.env.production`, which `npm run build` picks up automatically.
 - The app uses client-side routing. The host must rewrite unknown paths to
   `index.html`, or a refresh on `/subtasks/482/material` will 404.
-- Before going live, tighten the API's `Access-Control-Allow-Origin` from `*`
-  to `https://site.nahas.group`.
+- Optionally narrow the API's allowed origin by setting
+  `FIELD_PORTAL_CORS_ORIGIN=https://site.nahas.group` in the Odoo server's
+  environment. This is defence in depth rather than a fix: `*` is already safe
+  for a Bearer-token API that sends no cookies.
+- Serving the app and proxying `/api` from the *same* host removes CORS
+  entirely and is the better long-term shape — see Option B in
+  [DEPLOYMENT.md](DEPLOYMENT.md#option-b--same-origin-via-reverse-proxy-recommended).
 
 ---
 
@@ -94,6 +125,7 @@ points the engineer at their administrator.
 | Entry forms | [EntryFormScreen.jsx](src/screens/EntryFormScreen.jsx) | `GET /subtasks/<task_id>/products?type=…` then `POST /subtasks/<task_id>/{material,expense,equipment,subcontractor}` |
 | Photo upload | [PhotoScreen.jsx](src/screens/PhotoScreen.jsx) | `POST /subtasks/<task_id>/photo` |
 | Success sheet | [SuccessSheet.jsx](src/screens/SuccessSheet.jsx) | `POST /subtasks/<task_id>/photo` with `line_id` |
+| Review basket | [EntriesScreen.jsx](src/screens/EntriesScreen.jsx) | `GET /entries?state=…`, `POST /entries/<line_id>/update`, `POST /entries/<line_id>/delete`, `POST /entries/confirm` |
 
 Routes mirror the flow one-to-one, so the phone's back button walks it in
 reverse and a URL can be shared mid-flow:
@@ -159,6 +191,34 @@ Error handling follows the contract:
 | 403 | "Not allowed for this project" — a dead end, no retry button |
 | 400 | the server's message shown inline; no auto-retry (the input is wrong) |
 | 5xx / network | the message plus a **Try again** button |
+
+## Draft → review → send
+
+Saving an entry no longer files it. The write lands in Odoo as a **draft**
+(`project.sub.task.line.portal_state = 'draft'`), which is excluded from every
+back-office cost view — the task's Direct Materials/Equipment/Expenses tabs,
+the Consumables list and the pivot all filter on `portal_state != 'draft'`.
+
+The engineer accumulates drafts as they walk the site, reviews them in
+[EntriesScreen.jsx](src/screens/EntriesScreen.jsx) — reachable from the
+clipboard icon in the top bar, which badges the pending count from any depth —
+corrects or discards any of them, and presses **Send all to the office** once.
+That single `POST /entries/confirm` flips the batch to `confirmed`, at which
+point the office sees the numbers and the portal can no longer change them.
+
+Confirmed entries stay on the screen as read-only history. "What did I log
+here?" is asked just as often after submitting as before, and answering it was
+the whole reason for the feature.
+
+Two deliberate choices worth knowing:
+
+- **The draft lives on the server, not the phone.** A lost or wiped device
+  loses nothing, and a supervisor can see work in progress by clearing the
+  default *Confirmed* filter on the Consumables list.
+- **Confirm is idempotent.** Ids that are already confirmed come back in
+  `skipped_ids` rather than failing the batch, so a phone that retries after a
+  timeout on flaky site LTE cannot double-submit or error out on work that
+  already landed.
 
 ### Post-submit flow
 
@@ -261,10 +321,11 @@ blocking — each is handled with a documented assumption.
    sends its `uom_id`. A `GET /uoms` (or a `uom_ids` array per product line)
    would be needed to make it selectable.
 
-3. **No partner list endpoint.** `partner_id` is optional on the subcontractor
-   write, and there is no endpoint to list allowed partners, so the portal sends
-   `null` and hides the field — as specified. A `GET /partners` would be needed
-   to surface it later.
+3. ~~**No partner list endpoint.**~~ **Closed** — `GET /subcontractors` exists
+   and returns every `res.partner` with `is_subcontractor = True`. The portal
+   still sends `partner_id: null` and hides the field, because no partner in
+   the database carries that flag yet, so the picker would be empty. Wire it up
+   once the office flags the subcontractors.
 
 4. **`POST /photo` takes one photo per call.** Multi-photo uploads are sent as a
    sequence. Partial success is reported honestly (successful ones stay
@@ -277,10 +338,9 @@ blocking — each is handled with a documented assumption.
    log directly against the leaf's own task id. Worth confirming that is valid
    server-side.
 
-6. **No read-back of existing entries.** There is no `GET` for lines already
-   logged on a sub-task, so the portal cannot show "what I logged here earlier
-   today" or detect an accidental duplicate submission. A `GET
-   /subtasks/<task_id>/lines` would close the loop.
+6. ~~**No read-back of existing entries.**~~ **Closed** — `GET /entries`
+   returns everything the calling engineer has logged, split into `drafts` and
+   `confirmed`, which is what the review basket below is built on.
 
 7. **`GET /projects/<id>/tasks` shape is not fully specified.** The response is
    described as a "flat tree" with `parent_id` and `is_leaf`. The portal accepts

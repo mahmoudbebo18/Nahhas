@@ -1,13 +1,15 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle2, Camera, Loader2, Paperclip, Plus } from 'lucide-react'
+import { CheckCircle2, Camera, ClipboardList, Loader2, Paperclip, Plus } from 'lucide-react'
 import Sheet from '@/components/Sheet'
 import AttachmentPicker from '@/components/form/AttachmentPicker'
 import { useToast } from '@/components/Toast'
 import { useUploadPhoto } from '@/api/queries'
 import { useI18n } from '@/context/I18nContext'
 import { formatDate, formatDurationHours } from '@/lib/datetime'
-import { bidi, formatNumber } from '@/lib/text'
+import Bidi from '@/components/Bidi'
+import { formatNumber } from '@/lib/text'
 
 /**
  * Post-write confirmation.
@@ -22,6 +24,7 @@ import { bidi, formatNumber } from '@/lib/text'
  */
 export default function SuccessSheet({ open, result, taskId, entryType, onAddAnother, onDone }) {
   const { t, lang } = useI18n()
+  const navigate = useNavigate()
   const toast = useToast()
   const upload = useUploadPhoto(taskId)
   const [pending, setPending] = useState([])
@@ -85,9 +88,18 @@ export default function SuccessSheet({ open, result, taskId, entryType, onAddAno
         <p className="text-center text-lg font-bold">
           {t(`saved${entryType.charAt(0).toUpperCase()}${entryType.slice(1)}`, t('saved'))}
         </p>
+        {/* The entry is a draft: it is on the server but the office cannot see
+            it yet. Saying so here is what stops an engineer walking off site
+            believing the day's work is filed. */}
+        <p className="mx-auto mt-1 max-w-xs text-center text-[13px] leading-relaxed text-accent">
+          {t('savedDraftHint')}
+        </p>
         {lineId && (
           <p className="mt-1 text-center text-[13px] text-subtle">
-            {t('lineRef')} #{lineId}
+            {/* `<bdi>` keeps the "#" glued to its number: in an Arabic line
+                the bare "#" is a neutral between RTL text and a digit run,
+                and lands on the wrong side of the id. */}
+            {t('lineRef')} <bdi>#{lineId}</bdi>
           </p>
         )}
 
@@ -96,8 +108,8 @@ export default function SuccessSheet({ open, result, taskId, entryType, onAddAno
             {rows.map((row) => (
               <div key={row.label} className="flex items-start gap-3 px-4 py-2.5">
                 <dt className="w-28 shrink-0 text-[13px] font-medium text-muted">{row.label}</dt>
-                <dd className="min-w-0 flex-1 text-[14px] font-semibold" {...bidi(row.value)}>
-                  {row.value}
+                <dd className="min-w-0 flex-1 text-[14px] font-semibold">
+                  <Bidi>{row.value}</Bidi>
                 </dd>
               </div>
             ))}
@@ -146,6 +158,17 @@ export default function SuccessSheet({ open, result, taskId, entryType, onAddAno
           <button type="button" onClick={onAddAnother} className="btn-ghost w-full">
             <Plus className="h-4 w-4" aria-hidden />
             {t('addAnother')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onDone()
+              navigate('/entries')
+            }}
+            className="btn-ghost w-full"
+          >
+            <ClipboardList className="h-4 w-4" aria-hidden />
+            {t('reviewNow')}
           </button>
         </div>
       </div>

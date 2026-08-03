@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Home } from 'lucide-react'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
-import { bidi } from '@/lib/text'
+import Bidi from './Bidi'
 
 /**
  * "Home › Tower B › Floor 03 › بند عمل 1 › Blockwork"
@@ -99,9 +99,8 @@ export default function Breadcrumb() {
                     ? 'cursor-default text-text'
                     : 'text-muted hover:bg-surface-2 hover:text-text'
                 }`}
-                {...bidi(crumb.label)}
               >
-                {crumb.label}
+                <Bidi>{crumb.label}</Bidi>
               </button>
             </li>
           )

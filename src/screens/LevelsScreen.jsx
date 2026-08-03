@@ -1,9 +1,8 @@
 import { useEffect } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { Building, Building2, Home, Layers, Plus } from 'lucide-react'
 import Screen from '@/components/Screen'
-import ListRow, { listStagger } from '@/components/ListRow'
+import ListRow from '@/components/ListRow'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { useLevels } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
@@ -65,12 +64,13 @@ export default function LevelsScreen() {
         <EmptyState icon={Layers} title={t('emptyLevels')} />
       )}
 
-      <motion.ul variants={listStagger} initial="initial" animate="animate" className="space-y-2.5">
-        {levels.map((level) => {
+      <ul className="space-y-2.5">
+        {levels.map((level, i) => {
           const Icon = LEVEL_ICONS[level.level] ?? Layers
           return (
-            <motion.li key={level.level}>
+            <li key={level.level}>
               <ListRow
+                index={i}
                 leading={
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary">
                     <Icon className="h-5 w-5" aria-hidden />
@@ -84,10 +84,10 @@ export default function LevelsScreen() {
                 }
                 onClick={() => open(level)}
               />
-            </motion.li>
+            </li>
           )
         })}
-      </motion.ul>
+      </ul>
     </Screen>
   )
 }

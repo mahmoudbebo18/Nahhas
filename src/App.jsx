@@ -11,6 +11,7 @@ import LegacyTasksScreen from '@/screens/LegacyTasksScreen'
 import SubtasksScreen from '@/screens/SubtasksScreen'
 import ActionScreen from '@/screens/ActionScreen'
 import EntryFormScreen from '@/screens/EntryFormScreen'
+import EntriesScreen from '@/screens/EntriesScreen'
 import PhotoScreen from '@/screens/PhotoScreen'
 import { useAuth } from '@/context/AuthContext'
 import { useWhoami } from '@/api/queries'
@@ -27,6 +28,12 @@ import { useWhoami } from '@/api/queries'
  *   /subtasks/:taskId                     ← action chooser
  *   /subtasks/:taskId/:type               ← material | expense | equipment | subcontractor
  *   /subtasks/:taskId/photo
+ *
+ * Plus the review basket, which is not part of the walk — it is reachable
+ * from the top bar at any depth:
+ *
+ *   /entries
+ *   /entries/:lineId/edit                 ← correct a draft before sending
  */
 export default function App() {
   const { isAuthed } = useAuth()
@@ -48,6 +55,8 @@ export default function App() {
           <Route path="/subtasks/:taskId" element={<ActionScreen />} />
           <Route path="/subtasks/:taskId/photo" element={<PhotoScreen />} />
           <Route path="/subtasks/:taskId/:type" element={<EntryFormScreen />} />
+          <Route path="/entries" element={<EntriesScreen />} />
+          <Route path="/entries/:lineId/edit" element={<EntryFormScreen />} />
           <Route path="*" element={<Navigate to="/projects" replace />} />
         </Routes>
       </AnimatePresence>

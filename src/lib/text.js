@@ -12,14 +12,27 @@ const ARABIC = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/
 export const hasArabic = (value) => ARABIC.test(String(value ?? ''))
 
 /**
- * Spread onto any element rendering server data:
- *   <span {...bidi(project.name)}>{project.name}</span>
- *
- * `dir` is explicit rather than "auto" because "auto" only looks at the first
- * strong character — "3 أدوار" would be treated as LTR.
+ * Rendering server data is `<Bidi>{project.name}</Bidi>` — see
+ * src/components/Bidi.jsx for why it is an element rather than a `dir`
+ * attribute spread onto the paragraph.
  */
-export function bidi(value) {
-  return hasArabic(value) ? { dir: 'rtl', lang: 'ar' } : { dir: 'ltr', lang: 'en' }
+
+/**
+ * Fold Arabic-Indic (٠١٢…) and Persian (۰۱۲…) digits down to ASCII, plus the
+ * Arabic decimal separator "٫" and thousands mark "٬".
+ *
+ * An Arabic keypad emits U+0660–0669, which `\d` does not match and `Number()`
+ * does not parse — so without this an engineer typing a quantity on an Arabic
+ * keyboard has every keystroke silently rejected.
+ */
+export function toLatinDigits(value) {
+  return String(value ?? '').replace(/[٠-٩۰-۹٫٬]/g, (ch) => {
+    if (ch === '٫') return '.'
+    if (ch === '٬') return ''
+    const code = ch.charCodeAt(0)
+    const base = code >= 0x06f0 ? 0x06f0 : 0x0660
+    return String(code - base)
+  })
 }
 
 /** Case/diacritic-tolerant needle match for the product search boxes. */

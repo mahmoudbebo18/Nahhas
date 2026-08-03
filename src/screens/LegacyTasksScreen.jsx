@@ -1,15 +1,14 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { ChevronRight, FolderTree, ListTree } from 'lucide-react'
 import Screen from '@/components/Screen'
-import ListRow, { listStagger } from '@/components/ListRow'
+import ListRow from '@/components/ListRow'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { useLegacyTasks } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
 import { useEnsureProjectCrumb } from '@/hooks/useCrumbs'
-import { bidi } from '@/lib/text'
+import Bidi from '@/components/Bidi'
 
 /**
  * GET /projects/<id>/tasks — the fallback for non-level-aware ("legacy")
@@ -112,9 +111,8 @@ export default function LegacyTasksScreen() {
                     ? 'cursor-default text-text'
                     : 'text-muted hover:text-text'
                 }`}
-                {...bidi(node.name)}
               >
-                {node.name}
+                <Bidi>{node.name}</Bidi>
               </button>
             </span>
           ))}
@@ -129,16 +127,11 @@ export default function LegacyTasksScreen() {
         <EmptyState icon={FolderTree} title={t('emptyTasks')} />
       )}
 
-      <motion.ul
-        key={parent ?? 'root'}
-        variants={listStagger}
-        initial="initial"
-        animate="animate"
-        className="space-y-2.5"
-      >
-        {children.map((task) => (
-          <motion.li key={task.id}>
+      <ul key={parent ?? 'root'} className="space-y-2.5">
+        {children.map((task, i) => (
+          <li key={task.id}>
             <ListRow
+              index={i}
               title={task.name}
               subtitle={task.code || undefined}
               badges={
@@ -148,9 +141,9 @@ export default function LegacyTasksScreen() {
               }
               onClick={() => open(task)}
             />
-          </motion.li>
+          </li>
         ))}
-      </motion.ul>
+      </ul>
     </Screen>
   )
 }

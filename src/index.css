@@ -96,6 +96,13 @@
     -webkit-text-size-adjust: 100%;
     /* Never let a horizontal drag bounce the guided flow sideways. */
     overflow-x: hidden;
+    /* Reserve the scrollbar's width whether or not it is showing. Without it
+       every change in page height that crosses the viewport — a skeleton
+       becoming a real list, one screen swapping for a shorter one, a sheet
+       locking the scroll — adds or removes ~15px of width, and the centred
+       top bar visibly jumps sideways each time. On phones, where scrollbars
+       are overlays and take no width, this is a no-op. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -213,6 +220,30 @@
   }
   [dir='rtl'] .rtl-flush {
     padding-inline-start: 1rem;
+  }
+
+  /* Keeps a field aligned with the page even if it is ever given its own
+     `dir` — a login or a password is a candidate, since an `@` or a trailing
+     "." can be reordered by the bidi algorithm. Logical padding and
+     text-align resolve against the ELEMENT's direction, so a field that
+     opts out of the page's direction otherwise drags its placeholder and
+     its affix gap to the wrong side. */
+  [dir='rtl'] .ltr-value {
+    text-align: right;
+  }
+  [dir='ltr'] .affix-end {
+    padding-right: 3rem;
+  }
+  [dir='rtl'] .affix-end {
+    padding-left: 3rem;
+  }
+
+  /* The skeleton's highlight has to sweep the way the eye reads. */
+  .shimmer-sweep {
+    @apply -translate-x-full animate-shimmer;
+  }
+  [dir='rtl'] .shimmer-sweep {
+    @apply translate-x-full animate-shimmer-rtl;
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;

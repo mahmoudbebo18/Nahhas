@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
-import { bidi } from '@/lib/text'
+import Bidi from './Bidi'
 
 /**
  * The drill-down row used by every picker in the walk.
@@ -10,14 +10,33 @@ import { bidi } from '@/lib/text'
  * the flow actually goes in Arabic.
  */
 
-// A brief stagger reads as "the list arrived" without delaying the first row.
-export const listStagger = {
-  animate: { transition: { staggerChildren: 0.035, delayChildren: 0.02 } },
-}
+/**
+ * A brief cascade reads as "the list arrived" without delaying the first row.
+ *
+ * It is driven by the row's own index rather than by `staggerChildren` on the
+ * <ul> for a reason: list data always lands *after* the list element has
+ * mounted, and a child that inherits its variants from an already-mounted
+ * parent is never told to run — it sits at the `initial` opacity of 0, blank
+ * on screen but still tappable. Animating from the row itself makes the
+ * reveal independent of when, and how often, the list gets refilled.
+ */
+const STEP = 0.035
+const MAX_STEPS = 8 // a sixty-row project must not cascade for two seconds
 
-export const rowVariants = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 420, damping: 34 } },
+function rowEnter(index = 0) {
+  return {
+    initial: { opacity: 0, y: 10 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 420,
+        damping: 34,
+        delay: Math.min(index, MAX_STEPS) * STEP,
+      },
+    },
+  }
 }
 
 export default function ListRow({
@@ -29,11 +48,12 @@ export default function ListRow({
   onClick,
   disabled = false,
   selected = false,
+  index = 0,
 }) {
   return (
     <motion.button
       type="button"
-      variants={rowVariants}
+      {...rowEnter(index)}
       whileTap={disabled ? undefined : { scale: 0.985 }}
       transition={{ type: 'spring', stiffness: 600, damping: 30 }}
       onClick={onClick}
@@ -49,13 +69,13 @@ export default function ListRow({
       {leading && <div className="shrink-0">{leading}</div>}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold leading-tight" {...bidi(title)}>
-          {title}
+        <p className="truncate text-[15px] font-semibold leading-tight">
+          <Bidi>{title}</Bidi>
         </p>
 
         {subtitle && (
-          <p className="mt-1 truncate text-[13px] text-muted" {...bidi(subtitle)}>
-            {subtitle}
+          <p className="mt-1 truncate text-[13px] text-muted">
+            <Bidi>{subtitle}</Bidi>
           </p>
         )}
 

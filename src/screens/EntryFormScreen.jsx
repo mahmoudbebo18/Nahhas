@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PackageSearch } from 'lucide-react'
@@ -12,12 +12,19 @@ import SubmitBar from '@/components/form/SubmitBar'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import SuccessSheet from './SuccessSheet'
 import { ENTRY_TYPES, isEntryType } from '@/api/entryTypes'
-import { useCreateEntry, useProducts } from '@/api/queries'
+import { useCreateEntry, useMyEntries, useProducts, useUpdateEntry } from '@/api/queries'
 import { useI18n } from '@/context/I18nContext'
 import { useTrail } from '@/context/TrailContext'
 import { useToast } from '@/components/Toast'
-import { formatDuration, minutesBetween, nowRounded, todayISO, toApiDateTime } from '@/lib/datetime'
-import { bidi } from '@/lib/text'
+import {
+  formatDuration,
+  fromApiDateTime,
+  minutesBetween,
+  nowRounded,
+  todayISO,
+  toApiDateTime,
+} from '@/lib/datetime'
+import Bidi from '@/components/Bidi'
 
 /**
  * One screen for all four entry types.
@@ -44,11 +51,23 @@ const blankFor = (type) => ({
 })
 
 export default function EntryFormScreen() {
-  const { taskId, type } = useParams()
+  const params = useParams()
   const navigate = useNavigate()
   const { t, lang } = useI18n()
   const { trail } = useTrail()
   const toast = useToast()
+
+  // The same screen serves two routes: /subtasks/:taskId/:type creates a new
+  // draft, /entries/:lineId/edit corrects one that is already in the basket.
+  // In edit mode the task and the type come from the entry, not the URL.
+  const editingId = params.lineId ? Number(params.lineId) : null
+  const basket = useMyEntries('draft')
+  const editing = editingId
+    ? (basket.data?.drafts ?? []).find((d) => d.line_id === editingId)
+    : null
+
+  const taskId = editingId ? editing?.task_id : params.taskId
+  const type = editingId ? editing?.type : params.type
 
   const [form, setForm] = useState(() => blankFor(type))
   const [errors, setErrors] = useState({})
@@ -56,9 +75,55 @@ export default function EntryFormScreen() {
 
   const productsQuery = useProducts(taskId, type)
   const create = useCreateEntry(taskId, type)
+  const update = useUpdateEntry()
+  const pending = editingId ? update.isPending : create.isPending
+  const writeError = editingId ? update.error : create.error
+  const writeFailed = editingId ? update.isError : create.isError
 
   const products = productsQuery.data?.products ?? []
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
+
+  // Fill the form once, when the draft arrives. Keyed on the entry id alone:
+  // a background re-fetch of the basket must never overwrite what the
+  // engineer has already retyped into the fields.
+  useEffect(() => {
+    if (!editing) return
+    setForm({
+      // The product list may not have loaded yet. Seed from the entry itself
+      // so the field is never blank, then upgrade below once it does.
+      product: editing.product_id
+        ? {
+            product_id: editing.product_id,
+            line_id: editing.line_id,
+            name: editing.product,
+            uom_id: editing.uom_id,
+            uom: editing.uom,
+            quantity: editing.qty,
+          }
+        : null,
+      qty: editing.qty ? String(editing.qty) : '',
+      amount: editing.amount ? String(editing.amount) : '',
+      comments: editing.comments || '',
+      date: editing.date || todayISO(),
+      start: fromApiDateTime(editing.start) || nowRounded(),
+      end: fromApiDateTime(editing.end) || '',
+      attachments: [],
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.line_id])
+
+  // Swap the seeded stub for the real product line once the list arrives, so
+  // the picker shows it as selected and the planned quantity appears. Only
+  // ever touches `product`, and only while it is still the stub.
+  useEffect(() => {
+    if (!editingId || products.length === 0) return
+    setForm((f) => {
+      if (!f.product || f.product.line_id !== editing?.line_id) return f
+      const match = products.find((p) => p.product_id === f.product.product_id)
+      return match ? { ...f, product: match } : f
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId, products.length, editing?.line_id])
 
   const config = ENTRY_TYPES[type]
   const needsTimes = type === 'equipment' || type === 'subcontractor'
@@ -69,6 +134,22 @@ export default function EntryFormScreen() {
     const minutes = minutesBetween(form.start, form.end)
     return minutes === null ? null : formatDuration(minutes, lang)
   }, [needsTimes, form.start, form.end, lang])
+
+  // In edit mode the type is only known once the basket has loaded, so the
+  // usual "unknown type → bounce" guard has to wait for it.
+  if (editingId) {
+    if (basket.isPending) return <Screen><ListSkeleton rows={3} /></Screen>
+    if (basket.isError) {
+      return (
+        <Screen title={t('editEntry')}>
+          <ErrorState error={basket.error} onRetry={basket.refetch} />
+        </Screen>
+      )
+    }
+    // Confirmed, deleted, or someone else's — either way it is no longer a
+    // draft this engineer can correct.
+    if (!editing) return <Navigate to="/entries" replace />
+  }
 
   if (!isEntryType(type)) return <Navigate to={`/subtasks/${taskId}`} replace />
 
@@ -146,10 +227,25 @@ export default function EntryFormScreen() {
     e?.preventDefault()
     if (!validate()) return
 
+    if (editingId) {
+      // Correcting a draft returns to the basket rather than the success
+      // sheet — there is nothing to celebrate, the entry has not moved.
+      update.mutate(
+        { lineId: editingId, ...buildPayload() },
+        {
+          onSuccess: () => {
+            toast.success(t('saved'))
+            navigate('/entries')
+          },
+        },
+      )
+      return
+    }
+
     create.mutate(buildPayload(), {
       onSuccess: (data) => {
         setResult(data)
-        toast.success(t('saved'))
+        toast.success(t('savedDraft'))
       },
       // The error is rendered inline above the submit bar with a retry, so no
       // toast here — a failed write needs a decision, not a disappearing note.
@@ -182,8 +278,8 @@ export default function EntryFormScreen() {
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold leading-tight">{t(type)}</h1>
           {subtaskName && (
-            <p className="mt-0.5 truncate text-sm text-muted" {...bidi(subtaskName)}>
-              {subtaskName}
+            <p className="mt-0.5 truncate text-sm text-muted">
+              <Bidi>{subtaskName}</Bidi>
             </p>
           )}
         </div>
@@ -288,7 +384,7 @@ export default function EntryFormScreen() {
                   <span className="font-semibold text-text">{t('duration')}</span>
                   <span className="tnum">{durationPreview}</span>
                   <span className="text-subtle">·</span>
-                  <span className="text-subtle">calculated by Odoo on save</span>
+                  <span className="text-subtle">{t('durationNote')}</span>
                 </motion.p>
               )}
             </>
@@ -322,9 +418,13 @@ export default function EntryFormScreen() {
             </Field>
           )}
 
-          {create.isError && <ErrorState error={create.error} onRetry={submit} compact />}
+          {writeFailed && <ErrorState error={writeError} onRetry={submit} compact />}
 
-          <SubmitBar onSubmit={submit} pending={create.isPending} />
+          <SubmitBar
+            onSubmit={submit}
+            pending={pending}
+            label={editingId ? t('saveChanges') : undefined}
+          />
         </form>
       )}
 

@@ -111,8 +111,7 @@ export default function SetupScreen() {
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck="false"
-            dir="ltr"
-            className="input"
+            className="input ltr-value"
           />
           {fieldErrors.login && (
             <p className="mt-1.5 text-[13px] font-medium text-danger" role="alert">
@@ -138,8 +137,7 @@ export default function SetupScreen() {
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck="false"
-              dir="ltr"
-              className="input pe-12"
+              className="input ltr-value affix-end"
             />
             <button
               type="button"
@@ -196,7 +194,7 @@ export default function SetupScreen() {
         </p>
 
         {API_BASE_CONFIGURED && (
-          <p className="mt-4 text-center text-[11px] text-subtle" dir="ltr">
+          <p className="mt-4 text-center text-[11px] text-subtle">
             {API_BASE}
           </p>
         )}

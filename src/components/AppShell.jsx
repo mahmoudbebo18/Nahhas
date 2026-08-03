@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, Languages } from 'lucide-react'
+import { ChevronLeft, ClipboardList, Languages } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import Breadcrumb from './Breadcrumb'
 import AccountSheet from './AccountSheet'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
+import { useDraftCount } from '@/api/queries'
 
 /**
  * Persistent chrome: brand bar, back, language, theme, account — plus the
@@ -53,6 +54,8 @@ export default function AppShell({ children }) {
             </span>
           </button>
 
+          {isAuthed && <DraftsButton />}
+
           <motion.button
             type="button"
             whileTap={{ scale: 0.9 }}
@@ -87,5 +90,44 @@ export default function AppShell({ children }) {
 
       <AccountSheet open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>
+  )
+}
+
+/**
+ * Way into the review basket, with the count of entries not yet sent.
+ *
+ * It sits in the persistent chrome rather than on one screen because the
+ * engineer accumulates drafts from five levels down and has to be able to get
+ * back to them without walking out of the flow first.
+ */
+function DraftsButton() {
+  const navigate = useNavigate()
+  const { t } = useI18n()
+  const count = useDraftCount()
+
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.9 }}
+      onClick={() => navigate('/entries')}
+      className="relative flex h-11 w-11 items-center justify-center rounded-xl hover:bg-white/10"
+      aria-label={count > 0 ? `${t('myEntries')} — ${count} ${t('waitingSuffix')}` : t('myEntries')}
+      title={t('myEntries')}
+    >
+      <ClipboardList className="h-[20px] w-[20px]" aria-hidden />
+      {count > 0 && (
+        <motion.span
+          key={count}
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          className="tnum absolute end-1 top-1 min-w-[18px] rounded-full bg-accent px-1
+                     text-[11px] font-bold leading-[18px] text-accent-fg"
+          aria-hidden
+        >
+          {count > 99 ? '99+' : count}
+        </motion.span>
+      )}
+    </motion.button>
   )
 }

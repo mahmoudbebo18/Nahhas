@@ -5,7 +5,7 @@ import Screen from '@/components/Screen'
 import { ENTRY_ORDER, ENTRY_TYPES } from '@/api/entryTypes'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
-import { bidi } from '@/lib/text'
+import Bidi from '@/components/Bidi'
 
 /**
  * The hub an engineer returns to after every save.
@@ -36,8 +36,8 @@ export default function ActionScreen() {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-subtle">
             {t('subtasks')}
           </p>
-          <p className="mt-0.5 font-semibold leading-snug" {...bidi(subtaskName)}>
-            {subtaskName}
+          <p className="mt-0.5 font-semibold leading-snug">
+            <Bidi>{subtaskName}</Bidi>
           </p>
         </div>
       )}

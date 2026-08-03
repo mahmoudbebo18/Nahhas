@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FolderOpen, RefreshCw, Search } from 'lucide-react'
 import Screen from '@/components/Screen'
-import ListRow, { listStagger } from '@/components/ListRow'
+import ListRow from '@/components/ListRow'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { useProjects } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
@@ -83,10 +83,11 @@ export default function ProjectsScreen() {
         />
       )}
 
-      <motion.ul variants={listStagger} initial="initial" animate="animate" className="space-y-2.5">
-        {filtered.map((project) => (
-          <motion.li key={project.id}>
+      <ul className="space-y-2.5">
+        {filtered.map((project, i) => (
+          <li key={project.id}>
             <ListRow
+              index={i}
               title={project.name}
               subtitle={[project.code, project.partner].filter(Boolean).join(' · ')}
               meta={
@@ -104,9 +105,9 @@ export default function ProjectsScreen() {
               ].filter(Boolean)}
               onClick={() => open(project)}
             />
-          </motion.li>
+          </li>
         ))}
-      </motion.ul>
+      </ul>
     </Screen>
   )
 }

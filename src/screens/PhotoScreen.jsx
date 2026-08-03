@@ -10,7 +10,7 @@ import { useUploadPhoto } from '@/api/queries'
 import { useI18n } from '@/context/I18nContext'
 import { useTrail } from '@/context/TrailContext'
 import { useToast } from '@/components/Toast'
-import { bidi } from '@/lib/text'
+import Bidi from '@/components/Bidi'
 
 /**
  * Standalone photo upload — POST /subtasks/<task_id>/photo with no `line_id`,
@@ -68,8 +68,8 @@ export default function PhotoScreen() {
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold leading-tight">{t('photo')}</h1>
           {subtaskName && (
-            <p className="mt-0.5 truncate text-sm text-muted" {...bidi(subtaskName)}>
-              {subtaskName}
+            <p className="mt-0.5 truncate text-sm text-muted">
+              <Bidi>{subtaskName}</Bidi>
             </p>
           )}
         </div>

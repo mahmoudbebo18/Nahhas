@@ -21,7 +21,7 @@ export function ListSkeleton({ rows = 5 }) {
           className="relative h-[4.5rem] overflow-hidden rounded-2xl border border-border bg-surface"
           style={{ opacity: 1 - i * 0.13 }}
         >
-          <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-surface-2 to-transparent" />
+          <div className="shimmer-sweep absolute inset-0 bg-gradient-to-r from-transparent via-surface-2 to-transparent" />
           <div className="flex h-full flex-col justify-center gap-2 px-4">
             <div className="h-3.5 w-2/5 rounded bg-surface-2" />
             <div className="h-3 w-1/4 rounded bg-surface-2" />

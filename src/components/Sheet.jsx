@@ -15,12 +15,16 @@ export default function Sheet({ open, onClose, title, children, footer }) {
     if (!open) return
     const onKey = (e) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
-    // Freeze the page behind so a scroll gesture can't chain through.
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // Freeze the page behind so a scroll gesture can't chain through. It has
+    // to be <html>, not <body>: <html> already carries `overflow-x: hidden`,
+    // and a root that is not `visible` stops the body's overflow propagating
+    // to the viewport — so locking the body alone leaves the page scrollable.
+    const root = document.documentElement
+    const previous = root.style.overflow
+    root.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = previous
+      root.style.overflow = previous
     }
   }, [open, onClose])
 

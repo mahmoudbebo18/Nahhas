@@ -80,9 +80,13 @@ export default {
         shimmer: {
           '100%': { transform: 'translateX(100%)' },
         },
+        'shimmer-rtl': {
+          '100%': { transform: 'translateX(-100%)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.6s infinite',
+        'shimmer-rtl': 'shimmer-rtl 1.6s infinite',
       },
     },
   },

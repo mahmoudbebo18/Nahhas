@@ -1,9 +1,8 @@
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { ClipboardList, LayoutTemplate, PackageCheck } from 'lucide-react'
 import Screen from '@/components/Screen'
-import ListRow, { listStagger } from '@/components/ListRow'
+import ListRow from '@/components/ListRow'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { useSubtasks } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
@@ -70,10 +69,11 @@ export default function SubtasksScreen() {
         />
       )}
 
-      <motion.ul variants={listStagger} initial="initial" animate="animate" className="space-y-2.5">
-        {subtasks.map((subtask) => (
-          <motion.li key={subtask.id}>
+      <ul className="space-y-2.5">
+        {subtasks.map((subtask, i) => (
+          <li key={subtask.id}>
             <ListRow
+              index={i}
               title={subtask.name}
               subtitle={humanise(subtask.stage || subtask.state) || undefined}
               badges={[
@@ -92,9 +92,9 @@ export default function SubtasksScreen() {
               ].filter(Boolean)}
               onClick={() => open(subtask)}
             />
-          </motion.li>
+          </li>
         ))}
-      </motion.ul>
+      </ul>
     </Screen>
   )
 }
