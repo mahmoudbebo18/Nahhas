@@ -146,12 +146,15 @@ const en = {
   sent: 'Already sent',
   draftBadge: 'Draft',
   confirmAll: 'Send all to the office',
+  confirmSelected: 'Send selected',
   confirmOne: 'Send',
+  selectAll: 'Select all',
+  selectEntry: 'Select entry',
   confirmingEntries: 'Sending…',
   confirmedToast: 'Sent to the office',
   confirmTitle: 'Send these entries?',
   confirmBody:
-    'Once sent, the office can see them and you can no longer change them here.',
+    'Only the entries you ticked are sent. Once sent, the office can see them and you can no longer change them here.',
   cancel: 'Cancel',
   editEntry: 'Edit',
   saveChanges: 'Save changes',
@@ -187,6 +190,11 @@ const en = {
   emptyProductsHint: 'Ask the office to add them to the task or its template.',
   emptyTasks: 'This project has no tasks.',
   pickAnother: 'Pick a different type',
+
+  // -- clipboard
+  copyName: 'Copy name',
+  copied: 'Copied',
+  copyFailed: 'Copy failed',
 
   // -- chrome
   theme: 'Theme',
@@ -325,11 +333,14 @@ const ar = {
   sent: 'تم إرسالها',
   draftBadge: 'مسودة',
   confirmAll: 'إرسال الكل إلى المكتب',
+  confirmSelected: 'إرسال المحدد',
   confirmOne: 'إرسال',
+  selectAll: 'تحديد الكل',
+  selectEntry: 'تحديد السجل',
   confirmingEntries: 'جارٍ الإرسال…',
   confirmedToast: 'تم الإرسال إلى المكتب',
   confirmTitle: 'إرسال هذه السجلات؟',
-  confirmBody: 'بعد الإرسال يراها المكتب ولن تتمكن من تعديلها هنا.',
+  confirmBody: 'يُرسل ما حدّدته فقط. بعد الإرسال يراها المكتب ولن تتمكن من تعديلها هنا.',
   cancel: 'إلغاء',
   editEntry: 'تعديل',
   saveChanges: 'حفظ التعديلات',
@@ -364,6 +375,10 @@ const ar = {
   emptyProductsHint: 'اطلب من المكتب إضافتها إلى المهمة أو القالب.',
   emptyTasks: 'لا توجد مهام في هذا المشروع.',
   pickAnother: 'اختر نوعًا آخر',
+
+  copyName: 'نسخ الاسم',
+  copied: 'تم النسخ',
+  copyFailed: 'تعذّر النسخ',
 
   theme: 'المظهر',
   lightMode: 'الوضع النهاري',

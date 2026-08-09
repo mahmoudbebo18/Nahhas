@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CheckCheck, ClipboardCheck, FolderOpen, Inbox, Send, Trash2 } from 'lucide-react'
 import Screen from '@/components/Screen'
 import Sheet from '@/components/Sheet'
+import Checkbox from '@/components/Checkbox'
 import EntryCard from '@/components/EntryCard'
 import { EmptyState, ErrorState, ListSkeleton, Spinner } from '@/components/states'
 import { useToast } from '@/components/Toast'
@@ -14,9 +15,15 @@ import { useI18n } from '@/context/I18nContext'
  * The review basket — GET /entries.
  *
  * Everything the engineer logs lands here as a draft first. They walk the site
- * logging as they go, then read the list back before one button sends the lot
- * to the office. Confirmed entries stay below as read-only history, because
+ * logging as they go, then read the list back and tick what is ready to go to
+ * the office. Confirmed entries stay below as read-only history, because
  * "what did I log here?" is asked just as often after submitting as before.
+ *
+ * Sending is per-entry, not all-or-nothing: half a day's walk is often ready
+ * while one line is still waiting on a delivery note, and the alternative —
+ * deleting it and logging it again tomorrow — is how quantities get lost.
+ * Nothing is ticked on arrival, so the send button starts inert and the batch
+ * is always something the engineer chose rather than something they inherited.
  *
  * Grouping is by project → sub-task, which is how the engineer remembers the
  * work ("the material on Tower B floor 3"), not by entry type.
@@ -35,16 +42,49 @@ export default function EntriesScreen() {
 
   const [confirming, setConfirming] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
+  const [picked, setPicked] = useState(() => new Set())
 
-  const drafts = query.data?.drafts ?? []
+  const drafts = useMemo(() => query.data?.drafts ?? [], [query.data])
   const sent = history.data?.confirmed ?? []
 
   const draftGroups = useMemo(() => groupByTask(drafts), [drafts])
 
-  async function sendAll() {
+  // Drop ids that have left the basket — deleted here, or confirmed from
+  // another device — so the button can never offer to send more than is there.
+  useEffect(() => {
+    setPicked((prev) => {
+      if (prev.size === 0) return prev
+      const live = new Set(drafts.map((entry) => entry.line_id))
+      const next = new Set([...prev].filter((id) => live.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [drafts])
+
+  const allPicked = drafts.length > 0 && picked.size === drafts.length
+
+  function togglePicked(lineId, checked) {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(lineId)
+      else next.delete(lineId)
+      return next
+    })
+  }
+
+  function toggleAll(checked) {
+    setPicked(checked ? new Set(drafts.map((entry) => entry.line_id)) : new Set())
+  }
+
+  async function sendPicked() {
+    // Filter the list rather than spreading the Set: the office reads the
+    // batch in the order the entries were logged, not the order they were
+    // ticked.
+    const lineIds = drafts.filter((e) => picked.has(e.line_id)).map((e) => e.line_id)
+    if (lineIds.length === 0) return
     try {
-      const result = await confirm.mutateAsync()
+      const result = await confirm.mutateAsync(lineIds)
       setConfirming(false)
+      setPicked(new Set())
       toast.success(`${t('confirmedToast')} (${result.confirmed_count})`)
     } catch (err) {
       setConfirming(false)
@@ -72,14 +112,24 @@ export default function EntriesScreen() {
       {query.isSuccess && (
         <>
           <section aria-labelledby="pending-heading">
-            <div className="mb-2 flex items-baseline justify-between gap-3">
-              <h2 id="pending-heading" className="text-[13px] font-bold uppercase tracking-wide text-muted">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h2
+                id="pending-heading"
+                className="flex items-baseline gap-2 text-[13px] font-bold uppercase tracking-wide text-muted"
+              >
                 {t('pending')}
+                {drafts.length > 0 && (
+                  <span className="tnum font-semibold text-accent">{drafts.length}</span>
+                )}
               </h2>
               {drafts.length > 0 && (
-                <span className="tnum text-[13px] font-semibold text-accent">
-                  {drafts.length}
-                </span>
+                <Checkbox
+                  checked={allPicked}
+                  indeterminate={picked.size > 0 && !allPicked}
+                  onChange={toggleAll}
+                  label={t('selectAll')}
+                  srLabel={t('selectAll')}
+                />
               )}
             </div>
 
@@ -121,6 +171,11 @@ export default function EntriesScreen() {
                           <EntryCard
                             entry={entry}
                             index={groupIndex + i}
+                            selectable
+                            selected={picked.has(entry.line_id)}
+                            onSelectChange={(checked) =>
+                              togglePicked(entry.line_id, checked)
+                            }
                             onEdit={() =>
                               navigate(`/entries/${entry.line_id}/edit`)
                             }
@@ -159,9 +214,11 @@ export default function EntriesScreen() {
             <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-border bg-bg/90 px-4 py-3 pb-safe backdrop-blur">
               <motion.button
                 type="button"
-                whileTap={{ scale: 0.98 }}
+                whileTap={picked.size === 0 ? undefined : { scale: 0.98 }}
                 onClick={() => setConfirming(true)}
-                disabled={confirm.isPending}
+                // Nothing ticked is not an error worth explaining in a sheet —
+                // the checkboxes are right above the button.
+                disabled={confirm.isPending || picked.size === 0}
                 className="btn-accent w-full text-base"
               >
                 {confirm.isPending ? (
@@ -172,7 +229,7 @@ export default function EntriesScreen() {
                 ) : (
                   <>
                     <Send className="rtl-flip h-5 w-5" aria-hidden />
-                    {t('confirmAll')} ({drafts.length})
+                    {allPicked ? t('confirmAll') : t('confirmSelected')} ({picked.size})
                   </>
                 )}
               </motion.button>
@@ -193,12 +250,12 @@ export default function EntriesScreen() {
           </div>
           <button
             type="button"
-            onClick={sendAll}
-            disabled={confirm.isPending}
+            onClick={sendPicked}
+            disabled={confirm.isPending || picked.size === 0}
             className="btn-accent w-full"
           >
             {confirm.isPending ? <Spinner className="h-5 w-5" /> : null}
-            {t('confirmAll')} ({drafts.length})
+            {allPicked ? t('confirmAll') : t('confirmSelected')} ({picked.size})
           </button>
           <button
             type="button"

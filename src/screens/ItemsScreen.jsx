@@ -101,6 +101,7 @@ export default function ItemsScreen() {
                   ? `${item.subtask_count} ${t('subtaskCount')}`
                   : undefined
               }
+              copyText={item.name}
               onClick={() => open(item)}
               disabled={!item.task_id}
             />

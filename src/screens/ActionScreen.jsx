@@ -12,6 +12,7 @@ import { useSubtaskAvailability } from '@/api/queries'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
 import Bidi from '@/components/Bidi'
+import CopyButton from '@/components/CopyButton'
 
 /**
  * The hub an engineer returns to after every save.
@@ -47,13 +48,18 @@ export default function ActionScreen() {
   return (
     <Screen title={t('logWork')}>
       {subtaskName && (
-        <div className="mb-4 rounded-2xl border border-border bg-surface-2 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-subtle">
-            {t('subtasks')}
-          </p>
-          <p className="mt-0.5 font-semibold leading-snug">
-            <Bidi>{subtaskName}</Bidi>
-          </p>
+        <div className="mb-4 flex items-center gap-2 rounded-2xl border border-border bg-surface-2 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-subtle">
+              {t('subtasks')}
+            </p>
+            <p className="mt-0.5 font-semibold leading-snug">
+              <Bidi>{subtaskName}</Bidi>
+            </p>
+          </div>
+          {/* The hub is where the engineer stands longest, so it is the most
+              likely place they need this name in hand. */}
+          <CopyButton value={subtaskName} className="-me-2 shrink-0" />
         </div>
       )}
 

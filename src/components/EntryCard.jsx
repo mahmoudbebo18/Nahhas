@@ -3,6 +3,7 @@ import { ListTree, Pencil, Trash2 } from 'lucide-react'
 import { ENTRY_TYPES } from '@/api/entryTypes'
 import { useI18n } from '@/context/I18nContext'
 import Bidi from './Bidi'
+import Checkbox from './Checkbox'
 import { formatNumber } from '@/lib/text'
 import { formatDate, formatDurationHours } from '@/lib/datetime'
 
@@ -17,12 +18,18 @@ import { formatDate, formatDurationHours } from '@/lib/datetime'
  * Drafts don't need it — they are grouped under that heading already — but a
  * flat history list otherwise reads as a pile of quantities with no answer to
  * "which sub-task was this?".
+ *
+ * `selectable` adds the checkbox that decides whether this draft goes in the
+ * next batch to the office.
  */
 export default function EntryCard({
   entry,
   index = 0,
   readOnly = false,
   showContext = false,
+  selectable = false,
+  selected = false,
+  onSelectChange,
   onEdit,
   onDelete,
 }) {
@@ -59,9 +66,23 @@ export default function EntryCard({
           delay: Math.min(index, 8) * 0.035,
         },
       }}
-      className={`card p-4 ${readOnly ? 'opacity-80' : ''}`}
+      className={`card p-4 transition-colors ${readOnly ? 'opacity-80' : ''} ${
+        selectable && selected ? 'border-accent ring-2 ring-accent/25' : ''
+      }`}
     >
       <div className="flex items-start gap-3">
+        {selectable && (
+          // The box keeps its 48px tap area, which is taller than the type
+          // icon beside it; the nudge lines the two centres up instead of
+          // letting the checkbox hang below the icon.
+          <Checkbox
+            className="-mt-1.5 shrink-0"
+            checked={selected}
+            onChange={(next) => onSelectChange?.(next)}
+            srLabel={`${t('selectEntry')}: ${entry.product || t(entry.type ?? 'saved')}`}
+          />
+        )}
+
         {Icon && (
           <span
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import Bidi from './Bidi'
+import CopyButton from './CopyButton'
 
 /**
  * The drill-down row used by every picker in the walk.
@@ -8,6 +9,10 @@ import Bidi from './Bidi'
  * One row = one tap target, 64px+ tall, full width — sized for a gloved thumb
  * on a phone held one-handed. The chevron uses `rtl-flip` so it points the way
  * the flow actually goes in Arabic.
+ *
+ * `copyText` adds a second, smaller target at the end of the row. It is a
+ * sibling of the drill-down button, not a child: a button inside a button is
+ * invalid HTML and, in practice, swallows the inner tap on iOS Safari.
  */
 
 /**
@@ -55,61 +60,75 @@ export default function ListRow({
   dimmed = false,
   selected = false,
   index = 0,
+  /** Text the row's copy button puts on the clipboard — omit for no button. */
+  copyText,
+  copyLabel,
 }) {
   return (
-    <motion.button
-      type="button"
+    <motion.div
       {...rowEnter(index)}
       whileTap={disabled ? undefined : { scale: 0.985 }}
       transition={{ type: 'spring', stiffness: 600, damping: 30 }}
-      onClick={onClick}
-      disabled={disabled}
-      className={`card theme-tint flex w-full items-center gap-3 p-4 text-start
-                  transition-colors disabled:opacity-50
-                  ${dimmed && !disabled ? 'opacity-60' : ''}
+      className={`card theme-tint flex w-full items-center
+                  transition-colors
+                  ${disabled ? 'opacity-50' : dimmed ? 'opacity-60' : ''}
                   ${
                     selected
                       ? 'border-accent ring-2 ring-accent/25'
-                      : 'active:bg-surface-2 sm:hover:border-border-strong'
+                      : 'sm:hover:border-border-strong'
                   }`}
     >
-      {leading && <div className="shrink-0">{leading}</div>}
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={`flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-4 text-start
+                    ${disabled ? 'pointer-events-none' : selected ? '' : 'active:bg-surface-2'}`}
+      >
+        {leading && <div className="shrink-0">{leading}</div>}
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold leading-tight">
-          <Bidi>{title}</Bidi>
-        </p>
-
-        {subtitle && (
-          <p className="mt-1 truncate text-[13px] text-muted">
-            <Bidi>{subtitle}</Bidi>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold leading-tight">
+            <Bidi>{title}</Bidi>
           </p>
-        )}
 
-        {badges?.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {badges.map((b) => (
-              <span
-                key={b.key ?? b.label}
-                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
-                  b.tone === 'accent'
-                    ? 'bg-accent-soft text-accent'
-                    : b.tone === 'muted'
-                      ? 'bg-surface-2 text-muted'
-                      : 'bg-primary-soft text-primary'
-                }`}
-              >
-                {b.icon}
-                {b.label}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+          {subtitle && (
+            <p className="mt-1 truncate text-[13px] text-muted">
+              <Bidi>{subtitle}</Bidi>
+            </p>
+          )}
 
-      {meta && <div className="shrink-0 text-end text-[13px] tnum text-muted">{meta}</div>}
+          {badges?.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {badges.map((b) => (
+                <span
+                  key={b.key ?? b.label}
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
+                    b.tone === 'accent'
+                      ? 'bg-accent-soft text-accent'
+                      : b.tone === 'muted'
+                        ? 'bg-surface-2 text-muted'
+                        : 'bg-primary-soft text-primary'
+                  }`}
+                >
+                  {b.icon}
+                  {b.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
-      <ChevronRight className="rtl-flip h-5 w-5 shrink-0 text-subtle" aria-hidden />
-    </motion.button>
+        {meta && <div className="shrink-0 text-end text-[13px] tnum text-muted">{meta}</div>}
+
+        <ChevronRight className="rtl-flip h-5 w-5 shrink-0 text-subtle" aria-hidden />
+      </button>
+
+      {copyText && (
+        <span className="flex shrink-0 items-center self-stretch border-s border-border px-1.5">
+          <CopyButton value={copyText} label={copyLabel} />
+        </span>
+      )}
+    </motion.div>
   )
 }

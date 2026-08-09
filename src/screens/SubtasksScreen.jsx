@@ -109,6 +109,9 @@ export default function SubtasksScreen() {
                         },
                       ].filter(Boolean)
                 }
+                // Sub-task names are what gets pasted into a message to the
+                // office, and they are far too long to retype from a phone.
+                copyText={subtask.name}
                 // Still tappable: a photo can be attached to any sub-task, and
                 // that is the one thing these rows are still good for.
                 dimmed={barren}

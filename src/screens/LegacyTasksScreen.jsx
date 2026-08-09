@@ -158,6 +158,7 @@ export default function LegacyTasksScreen() {
                       ]
                     : undefined
                 }
+                copyText={task.name}
                 dimmed={barren}
                 onClick={() => open(task)}
               />
