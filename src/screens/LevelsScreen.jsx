@@ -2,9 +2,12 @@ import { useEffect } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Building, Building2, Home, Layers, Plus } from 'lucide-react'
 import Screen from '@/components/Screen'
-import ListRow from '@/components/ListRow'
-import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
+import Tile, { TileGrid } from '@/components/Tile'
+import Bidi from '@/components/Bidi'
+import TimelineButton from '@/components/TimelineButton'
+import { EmptyState, ErrorState, TileGridSkeleton } from '@/components/states'
 import { useLevels } from '@/api/queries'
+import TodayTasks from './TodayTasks'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
 import { useEnsureProjectCrumb } from '@/hooks/useCrumbs'
@@ -18,6 +21,8 @@ import { useEnsureProjectCrumb } from '@/hooks/useCrumbs'
  * the flat task tree.
  */
 
+// The icon is information here, not decoration: it tells a building from a
+// floor from a unit before the label is read.
 const LEVEL_ICONS = {
   project: Layers,
   building: Building2,
@@ -45,18 +50,24 @@ export default function LevelsScreen() {
   }
 
   const levels = query.data?.levels ?? []
+  // Our own name first: Odoo sends the selection label in English whatever
+  // the UI language, which left "Building" on an Arabic screen.
+  const levelLabel = (level) => t(`level_${level.level}`, level.label || level.level)
 
   function open(level) {
-    setStep('level', {
-      level: level.level,
-      label: level.label || t(`level_${level.level}`, level.level),
-    })
+    setStep('level', { level: level.level, label: levelLabel(level) })
     navigate(`/projects/${projectId}/levels/${level.level}/items`)
   }
 
   return (
-    <Screen title={project?.name ?? t('levels')} lead={t('pickLevel')}>
-      {query.isPending && <ListSkeleton rows={4} />}
+    <Screen
+      title={project?.name ? <Bidi>{project.name}</Bidi> : t('levels')}
+      meta={project?.code ? <Bidi>{project.code}</Bidi> : undefined}
+      actions={<TimelineButton projectId={projectId} />}
+    >
+      <TodayTasks projectId={projectId} />
+
+      {query.isPending && <TileGridSkeleton count={4} />}
 
       {query.isError && <ErrorState error={query.error} onRetry={query.refetch} />}
 
@@ -64,30 +75,19 @@ export default function LevelsScreen() {
         <EmptyState icon={Layers} title={t('emptyLevels')} />
       )}
 
-      <ul className="space-y-2.5">
-        {levels.map((level, i) => {
-          const Icon = LEVEL_ICONS[level.level] ?? Layers
-          return (
-            <li key={level.level}>
-              <ListRow
-                index={i}
-                leading={
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary">
-                    <Icon className="h-5 w-5" aria-hidden />
-                  </div>
-                }
-                title={level.label || t(`level_${level.level}`, level.level)}
-                meta={
-                  level.item_count != null
-                    ? `${level.item_count} ${t('itemsCount')}`
-                    : undefined
-                }
-                onClick={() => open(level)}
-              />
-            </li>
-          )
-        })}
-      </ul>
+      {levels.length > 0 && (
+        <TileGrid>
+          {levels.map((level) => (
+            <Tile
+              key={level.level}
+              icon={LEVEL_ICONS[level.level] ?? Layers}
+              title={levelLabel(level)}
+              meta={[level.item_count != null ? `${level.item_count} ${t('itemsCount')}` : null]}
+              onClick={() => open(level)}
+            />
+          ))}
+        </TileGrid>
+      )}
     </Screen>
   )
 }

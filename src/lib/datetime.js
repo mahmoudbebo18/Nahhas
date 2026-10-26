@@ -191,3 +191,56 @@ export const dayNumber = (d, locale) =>
 /** Full date, spoken form — for the day cells' accessible names. */
 export const dayLabel = (d, locale) =>
   new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: 'full' }).format(d)
+
+/* -- planned dates ---------------------------------------------------------- */
+
+/**
+ * A task's planned date from the API — ISO 8601 in UTC ("…T05:00:00Z") — as a
+ * Date, so it renders in the device's timezone the way Odoo's own web client
+ * shows it to the office. Null for an unset date (the API sends `false`).
+ */
+export function parseUtc(value) {
+  if (!value) return null
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/** Local midnight of the day `d` falls on. */
+export const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+/**
+ * The two ends of a planned range, each as display text:
+ * `{ from, to, sameDay }`, either end null when unset.
+ *
+ * The year shows only when the range leaves the current one. The clock shows
+ * only with `withTime` — a tile is read at a glance, and Odoo plans whole
+ * working days (08:00–17:00) almost every time, so the hours there would
+ * be the same noise on every box. The clock is 24-hour, as everywhere else.
+ */
+export function rangeParts(startValue, endValue, locale = 'en', { withTime = false } = {}) {
+  const start = parseUtc(startValue)
+  const end = parseUtc(endValue)
+  if (!start && !end) return null
+
+  const thisYear = new Date().getFullYear()
+  const showYear = [start, end].some((d) => d && d.getFullYear() !== thisYear)
+  // Western digits in both languages: a range sits beside codes and counts
+  // that the API sends in them, and two digit sets on one box read as noise.
+  const day = new Intl.DateTimeFormat(`${intlLocale(locale)}-u-nu-latn`, {
+    day: 'numeric',
+    month: 'short',
+    ...(showYear ? { year: 'numeric' } : {}),
+  })
+  const clock = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const sameDay = Boolean(start && end && isSameDay(start, end))
+
+  if (sameDay) {
+    return {
+      from: withTime ? `${day.format(start)} · ${clock(start)}` : day.format(start),
+      to: withTime ? clock(end) : null,
+      sameDay,
+    }
+  }
+  const label = (d) => (d ? (withTime ? `${day.format(d)} · ${clock(d)}` : day.format(d)) : null)
+  return { from: label(start), to: label(end), sameDay }
+}

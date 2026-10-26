@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Camera } from 'lucide-react'
 import Screen from '@/components/Screen'
 import Field from '@/components/form/Field'
 import AttachmentPicker from '@/components/form/AttachmentPicker'
@@ -62,20 +61,11 @@ export default function PhotoScreen() {
   }
 
   return (
-    <Screen>
-      <header className="mb-5 flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-muted">
-          <Camera className="h-6 w-6" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold leading-tight">{t('photo')}</h1>
-          {subtaskName && (
-            <p className="mt-0.5 truncate text-sm text-muted">
-              <Bidi>{subtaskName}</Bidi>
-            </p>
-          )}
-        </div>
-      </header>
+    <Screen
+      width="narrow"
+      title={t('photo')}
+      meta={subtaskName ? <Bidi>{subtaskName}</Bidi> : undefined}
+    >
 
       <form onSubmit={submit}>
         <Field label={t('attachments')} error={photos.length === 0 && failed ? t('errNoAttachment') : undefined}>

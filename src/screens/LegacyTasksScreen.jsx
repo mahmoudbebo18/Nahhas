@@ -3,13 +3,17 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChevronRight, FolderTree, ListTree, PackageX } from 'lucide-react'
 import Screen from '@/components/Screen'
 import ListRow from '@/components/ListRow'
+import StatusBadge, { taskBadges } from '@/components/StatusBadge'
+import DateRange from '@/components/DateRange'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { hasNothingToEnter } from '@/api/entryTypes'
 import { useLegacyTasks } from '@/api/queries'
+import TodayTasks from './TodayTasks'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
 import { useEnsureProjectCrumb } from '@/hooks/useCrumbs'
 import Bidi from '@/components/Bidi'
+import TimelineButton from '@/components/TimelineButton'
 
 /**
  * GET /projects/<id>/tasks — the fallback for non-level-aware ("legacy")
@@ -85,34 +89,32 @@ export default function LegacyTasksScreen() {
 
   return (
     <Screen
-      title={project?.name ?? t('tasks')}
-      lead={t('pickTask')}
-      actions={
-        <span className="mt-1 shrink-0 rounded-md bg-accent-soft px-2 py-1 text-[11px] font-semibold text-accent">
-          {t('legacyProject')}
-        </span>
-      }
+      title={project?.name ? <Bidi>{project.name}</Bidi> : t('tasks')}
+      meta={<StatusBadge>{t('legacyProject')}</StatusBadge>}
+      actions={parent ? undefined : <TimelineButton projectId={projectId} />}
+      width="narrow"
     >
       {ancestors.length > 0 && (
         <nav
-          className="no-scrollbar mb-3 flex items-center gap-1 overflow-x-auto rounded-xl bg-surface-2 px-2 py-1.5"
+          className="no-scrollbar mb-4 flex items-center gap-1 overflow-x-auto rounded-control bg-surface-2 px-1"
           aria-label={t('tasks')}
         >
           <button
             type="button"
             onClick={() => setParams({})}
-            className="shrink-0 rounded-lg px-2 py-1 text-[13px] font-medium text-muted hover:text-text"
+            className="icon-btn"
+            aria-label={t('tasks')}
           >
-            <ListTree className="h-4 w-4" aria-hidden />
+            <ListTree className="h-5 w-5" aria-hidden />
           </button>
           {ancestors.map((node, i) => (
             <span key={node.id} className="flex shrink-0 items-center gap-1">
-              <ChevronRight className="rtl-flip h-3.5 w-3.5 text-subtle" aria-hidden />
+              <ChevronRight className="rtl-flip h-4 w-4 text-subtle" aria-hidden />
               <button
                 type="button"
                 disabled={i === ancestors.length - 1}
                 onClick={() => setParams({ parent: String(node.id) })}
-                className={`max-w-[9rem] truncate rounded-lg px-2 py-1 text-[13px] font-medium ${
+                className={`h-touch max-w-[12rem] truncate rounded-control px-2 text-secondary font-medium ${
                   i === ancestors.length - 1
                     ? 'cursor-default text-text'
                     : 'text-muted hover:text-text'
@@ -125,6 +127,10 @@ export default function LegacyTasksScreen() {
         </nav>
       )}
 
+      {/* At the root only: deeper in, the engineer has already chosen a
+          branch, and the day's list would sit between them and it. */}
+      {!parent && <TodayTasks projectId={projectId} />}
+
       {query.isPending && <ListSkeleton rows={5} />}
 
       {query.isError && <ErrorState error={query.error} onRetry={query.refetch} />}
@@ -133,31 +139,32 @@ export default function LegacyTasksScreen() {
         <EmptyState icon={FolderTree} title={t('emptyTasks')} />
       )}
 
-      <ul key={parent ?? 'root'} className="space-y-2.5">
-        {children.map((task, i) => {
+      <ul key={parent ?? 'root'} className="space-y-3">
+        {children.map((task) => {
           // Leaves are the logging points, so they carry the same "is there
           // anything here" answer the level-aware list shows on its sub-tasks.
           const barren = task.is_leaf && hasNothingToEnter(task.available)
           return (
             <li key={task.id}>
               <ListRow
-                index={i}
                 title={task.name}
                 subtitle={task.code || undefined}
-                badges={
-                  task.is_leaf
-                    ? [
-                        barren
-                          ? {
-                              key: 'barren',
-                              label: t('nothingToEnter'),
-                              tone: 'muted',
-                              icon: <PackageX className="h-3 w-3" aria-hidden />,
-                            }
-                          : { key: 'leaf', label: t('logHere'), tone: 'accent' },
-                      ]
-                    : undefined
-                }
+                badges={[
+                  (task.date_start || task.date_end) && (
+                    <DateRange key="dates" start={task.date_start} end={task.date_end} />
+                  ),
+                  ...taskBadges(task, t),
+                  task.is_leaf &&
+                    (barren ? (
+                      <StatusBadge key="barren" icon={PackageX}>
+                        {t('nothingToEnter')}
+                      </StatusBadge>
+                    ) : (
+                      <StatusBadge key="leaf" tone="primary">
+                        {t('logHere')}
+                      </StatusBadge>
+                    )),
+                ].filter(Boolean)}
                 copyText={task.name}
                 dimmed={barren}
                 onClick={() => open(task)}

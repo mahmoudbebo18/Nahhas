@@ -22,7 +22,7 @@
     --c-surface-2: 244 242 237; /* inset rows, skeletons */
     --c-text: 10 10 10; /* #0A0A0A */
     --c-text-muted: 90 92 88;
-    --c-text-subtle: 138 140 135;
+    --c-text-subtle: 108 110 105; /* ≥ 4.5:1 on every light surface */
     --c-border: 226 223 215;
     --c-border-strong: 203 199 189;
 
@@ -42,9 +42,11 @@
     --c-accent-fg: 255 255 255;
     --c-accent-soft: 249 235 227;
 
-    --c-success: 21 128 61;
+    /* Darkened just enough to clear 4.5:1 as text on surface-2 and on their
+       own 12% tint (the status badge). */
+    --c-success: 21 115 55;
     --c-danger: 185 28 28;
-    --c-warning: 180 83 9;
+    --c-warning: 158 72 8;
 
     color-scheme: light;
   }
@@ -55,7 +57,7 @@
     --c-surface-2: 32 32 32;
     --c-text: 250 249 246; /* #FAF9F6 */
     --c-text-muted: 163 163 158;
-    --c-text-subtle: 115 115 112;
+    --c-text-subtle: 145 145 140; /* ≥ 4.5:1 on every dark surface */
     --c-border: 45 45 45;
     --c-border-strong: 64 64 64;
 
@@ -106,10 +108,31 @@
   }
 
   body {
-    @apply bg-bg font-sans text-text antialiased;
+    @apply bg-bg font-sans text-body text-text antialiased;
     margin: 0;
     min-height: 100dvh;
     overscroll-behavior-y: none;
+    line-height: 1.45;
+  }
+
+  /* Arabic sits taller than Latin — ascenders, dots and marks above and below
+     the line — so it needs more leading or stacked lines start to touch. The
+     type scale sets sizes only, so every size inherits this. */
+  html[lang='ar'] body {
+    line-height: 1.6;
+  }
+
+  /* One stroke weight for every icon in the app. CSS beats the SVG attribute
+     lucide writes, and a utility (stroke-[3]) still beats this. */
+  .lucide {
+    stroke-width: 1.75;
+  }
+
+  /* Every number, date and amount lines up in columns and doesn't jitter as
+     it changes — the whole UI is figures under names. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
   }
 
   /* Theme swap should glide, but only on the surfaces — animating `all`
@@ -142,8 +165,10 @@
     font-size: 16px;
   }
 
+  /* Green, not orange: orange is reserved for the one action or alert a
+     screen is about, and a focus ring moves across every control. */
   :focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-bg;
   }
 
   /* Tone the native date/time picker indicator down to roughly `text-subtle`.
@@ -158,46 +183,81 @@
 
 @layer components {
   /* -- Buttons ----------------------------------------------------------- */
+  /* Press feedback is a colour change, never a bounce: it answers "did that
+     register?" without making a list of sixty rows wobble under the thumb. */
   .btn {
     @apply inline-flex min-h-tap select-none items-center justify-center gap-2
-           rounded-xl px-5 text-[15px] font-semibold leading-none
+           rounded-control px-4 text-body font-semibold leading-none
            transition-colors disabled:pointer-events-none disabled:opacity-45;
   }
   .btn-primary {
-    @apply btn bg-primary text-primary-fg hover:bg-primary-hover;
+    @apply btn bg-primary text-primary-fg hover:bg-primary-hover active:bg-primary-hover;
   }
   .btn-accent {
-    @apply btn bg-accent text-accent-fg hover:bg-accent-hover;
+    @apply btn bg-accent text-accent-fg hover:bg-accent-hover active:bg-accent-hover;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-text hover:bg-surface-2;
+    @apply btn bg-transparent text-text hover:bg-surface-2 active:bg-surface-2;
   }
   .btn-outline {
-    @apply btn border border-border-strong bg-surface text-text hover:bg-surface-2;
+    @apply btn border border-border-strong bg-surface text-text hover:bg-surface-2 active:bg-surface-2;
+  }
+  .btn-danger {
+    @apply btn border border-danger/30 bg-danger/10 text-danger hover:bg-danger/15 active:bg-danger/15;
+  }
+
+  /* A square, icon-only button: 44px to press, a 20px glyph inside. */
+  .icon-btn {
+    @apply inline-flex h-touch w-touch shrink-0 items-center justify-center rounded-control
+           text-muted transition-colors hover:bg-surface-2 hover:text-text active:bg-surface-2
+           disabled:pointer-events-none disabled:opacity-45;
   }
 
   /* -- Surfaces ---------------------------------------------------------- */
   .card {
-    @apply theme-tint rounded-2xl border border-border bg-surface shadow-card;
+    @apply theme-tint rounded-card border border-border bg-surface;
+  }
+
+  /* The pressable card: tiles and rows in the walk. */
+  .card-action {
+    @apply card transition-colors hover:border-border-strong active:bg-surface-2;
+  }
+
+  /* One tile per row on a phone, two from 425px, three from a tablet up.
+     Item and sub-task names run to several Arabic words; at two columns on
+     a 375px phone they wrapped into a tall, ragged column of one-word lines.
+     Plain CSS rather than Tailwind's breakpoints because 425px is not among
+     them, and an arbitrary min-[…] variant is not guaranteed to sort before
+     md:. */
+  .tile-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 425px) {
+    .tile-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 768px) {
+    .tile-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   /* -- Form controls ----------------------------------------------------- */
+  /* No uppercase, no letter-spacing: tracking pulls joined Arabic letters
+     apart, and uppercase has no meaning in Arabic at all. Weight carries it. */
   .field-label {
-    @apply mb-1.5 block text-[13px] font-semibold uppercase tracking-wide text-muted;
+    @apply mb-2 block text-secondary font-semibold text-muted;
   }
   .input {
-    @apply theme-tint block min-h-tap w-full rounded-xl border border-border
+    @apply theme-tint block min-h-tap w-full rounded-control border border-border-strong
            bg-surface px-4 text-text placeholder:text-subtle
-           focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+           focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25;
   }
   textarea.input {
-    @apply py-3 leading-relaxed;
-  }
-
-  /* Tabular figures keep quantities and amounts from jittering as they type. */
-  .tnum {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: 'tnum' 1;
+    @apply py-3;
   }
 }
 

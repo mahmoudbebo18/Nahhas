@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import DatePicker from './DatePicker'
 import { useI18n } from '@/context/I18nContext'
 import { nowRounded, todayISO } from '@/lib/datetime'
@@ -35,13 +34,8 @@ export function DateTimeField({ id, value, onChange, min }) {
 
 function QuickSet({ onClick, label }) {
   return (
-    <motion.button
-      type="button"
-      whileTap={{ scale: 0.94 }}
-      onClick={onClick}
-      className="btn-outline shrink-0 px-4 text-sm"
-    >
+    <button type="button" onClick={onClick} className="btn-outline shrink-0 text-secondary">
       {label}
-    </motion.button>
+    </button>
   )
 }

@@ -34,7 +34,7 @@ export default function OfflineBanner() {
           className="sticky top-14 z-30 overflow-hidden bg-warning text-center"
           role="status"
         >
-          <p className="flex items-center justify-center gap-2 px-4 py-2 text-[13px] font-semibold text-black">
+          <p className="flex items-center justify-center gap-2 px-4 py-2 text-secondary font-semibold text-bg">
             <WifiOff className="h-4 w-4" aria-hidden />
             {t('offlineTitle')} — {t('offlineBody')}
           </p>

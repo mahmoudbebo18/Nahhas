@@ -10,8 +10,9 @@ import { Check, Minus } from 'lucide-react'
  * property with no HTML attribute, so the select-all box needs the real
  * element anyway.
  *
- * The whole label is the tap target — 44px tall even when the box itself is
- * 24px, because this is pressed with a thumb on a phone.
+ * The whole label is the tap target — 44px square even when the box itself
+ * is 24px, because this is pressed with a thumb on a phone. Green, like every
+ * other selection in the app; orange is kept for the send button it feeds.
  */
 export default function Checkbox({
   checked = false,
@@ -22,6 +23,8 @@ export default function Checkbox({
   /** Accessible name when there is no visible label. */
   srLabel,
   className = '',
+  /** Colour of the visible label, for a checkbox sitting on a tinted bar. */
+  labelClassName = 'text-muted',
 }) {
   const ref = useRef(null)
 
@@ -33,7 +36,7 @@ export default function Checkbox({
 
   return (
     <label
-      className={`inline-flex min-h-tap cursor-pointer select-none items-center gap-2 ${className}`}
+      className={`inline-flex min-h-touch min-w-touch cursor-pointer select-none items-center justify-center gap-2 ${className}`}
     >
       <input
         ref={ref}
@@ -45,21 +48,21 @@ export default function Checkbox({
       />
       <span
         aria-hidden
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2
-                    transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-accent
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-badge border-2
+                    transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary
                     peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-bg ${
                       filled
-                        ? 'border-accent bg-accent text-accent-fg'
+                        ? 'border-primary bg-primary text-primary-fg'
                         : 'border-border-strong bg-surface text-transparent'
                     }`}
       >
         {checked ? (
-          <Check className="h-4 w-4" strokeWidth={3} />
+          <Check className="h-4 w-4 stroke-[3]" />
         ) : indeterminate ? (
-          <Minus className="h-4 w-4" strokeWidth={3} />
+          <Minus className="h-4 w-4 stroke-[3]" />
         ) : null}
       </span>
-      {label && <span className="text-[13px] font-semibold text-muted">{label}</span>}
+      {label && <span className={`text-secondary font-semibold ${labelClassName}`}>{label}</span>}
     </label>
   )
 }

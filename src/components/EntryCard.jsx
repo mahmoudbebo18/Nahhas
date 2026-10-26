@@ -1,5 +1,4 @@
-import { motion } from 'framer-motion'
-import { ListTree, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { ENTRY_TYPES } from '@/api/entryTypes'
 import { useI18n } from '@/context/I18nContext'
 import Bidi from './Bidi'
@@ -12,7 +11,8 @@ import { formatDate, formatDurationHours } from '@/lib/datetime'
  *
  * Draft rows carry Edit / Delete; confirmed rows are inert — once the office
  * can see a number, changing it silently from a phone is not something this
- * portal should be able to do.
+ * portal should be able to do. It stays a row, not a tile: the actions need
+ * the width, and a basket is read top to bottom like a receipt.
  *
  * `showContext` puts the sub-task the entry was logged against on the card.
  * Drafts don't need it — they are grouped under that heading already — but a
@@ -24,7 +24,6 @@ import { formatDate, formatDurationHours } from '@/lib/datetime'
  */
 export default function EntryCard({
   entry,
-  index = 0,
   readOnly = false,
   showContext = false,
   selectable = false,
@@ -36,7 +35,6 @@ export default function EntryCard({
   const { t, lang } = useI18n()
   const config = ENTRY_TYPES[entry.type] ?? {}
   const Icon = config.icon
-  const accent = config.tone === 'accent'
 
   // Sub-task first: it is the one the engineer actually chose. Building and
   // project trail behind it and are the first to be truncated away.
@@ -51,82 +49,52 @@ export default function EntryCard({
       : null,
     entry.duration ? formatDurationHours(entry.duration, lang) : null,
     entry.date ? formatDate(entry.date, lang) : null,
+    entry.attachment_ids?.length > 0
+      ? `${entry.attachment_ids.length} ${t('attachments').toLowerCase()}`
+      : null,
   ].filter(Boolean)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{
-        opacity: 1,
-        y: 0,
-        transition: {
-          type: 'spring',
-          stiffness: 420,
-          damping: 34,
-          delay: Math.min(index, 8) * 0.035,
-        },
-      }}
-      className={`card p-4 transition-colors ${readOnly ? 'opacity-80' : ''} ${
-        selectable && selected ? 'border-accent ring-2 ring-accent/25' : ''
+    <div
+      className={`card p-4 transition-colors ${
+        selectable && selected ? 'border-primary bg-primary/5' : ''
       }`}
     >
       <div className="flex items-start gap-3">
         {selectable && (
-          // The box keeps its 48px tap area, which is taller than the type
-          // icon beside it; the nudge lines the two centres up instead of
-          // letting the checkbox hang below the icon.
+          // The box keeps its 44px tap area; the negative margin lines its
+          // centre up with the first line of text instead of hanging below it.
           <Checkbox
-            className="-mt-1.5 shrink-0"
+            className="-my-3 shrink-0"
             checked={selected}
             onChange={(next) => onSelectChange?.(next)}
             srLabel={`${t('selectEntry')}: ${entry.product || t(entry.type ?? 'saved')}`}
           />
         )}
 
-        {Icon && (
-          <span
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-              accent ? 'bg-accent-soft text-accent' : 'bg-primary-soft text-primary'
-            }`}
-          >
-            <Icon className="h-5 w-5" aria-hidden />
-          </span>
-        )}
-
         <div className="min-w-0 flex-1">
-          <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight">
+          <p className="flex items-start gap-2">
+            {/* The type icon tells material from expense at a glance; it is
+                plain, because the type is a fact, not an alert. */}
+            {Icon && <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted" aria-label={t(entry.type)} />}
+            <span className="min-w-0 flex-1 break-words font-semibold">
               <Bidi>{entry.product || t(entry.type ?? 'saved')}</Bidi>
-            </p>
-            {!readOnly && (
-              <span className="shrink-0 rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">
-                {t('draftBadge')}
-              </span>
-            )}
-          </div>
+            </span>
+          </p>
 
           {showContext && context && (
-            <p className="mt-1 flex items-center gap-1.5 text-[12px] text-muted">
-              <ListTree className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
-              <span className="truncate">
-                <Bidi>{context}</Bidi>
-              </span>
+            <p className="mt-1 truncate text-meta text-muted">
+              <Bidi>{context}</Bidi>
             </p>
           )}
 
           {facts.length > 0 && (
-            <p className="tnum mt-1 text-[13px] text-muted">{facts.join(' · ')}</p>
+            <p className="tnum mt-1 text-secondary text-muted">{facts.join(' · ')}</p>
           )}
 
           {entry.comments && (
-            <p className="mt-1 line-clamp-2 text-[13px] text-subtle">
+            <p className="mt-1 line-clamp-2 text-secondary text-muted">
               <Bidi>{entry.comments}</Bidi>
-            </p>
-          )}
-
-          {entry.attachment_ids?.length > 0 && (
-            <p className="tnum mt-1 text-[12px] text-subtle">
-              {entry.attachment_ids.length} {t('attachments').toLowerCase()}
             </p>
           )}
         </div>
@@ -134,26 +102,20 @@ export default function EntryCard({
 
       {!readOnly && (
         <div className="mt-3 flex gap-2 border-t border-border pt-3">
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.97 }}
-            onClick={onEdit}
-            className="btn-outline h-11 min-h-0 flex-1 text-sm"
-          >
+          <button type="button" onClick={onEdit} className="btn-outline min-h-touch flex-1 text-secondary">
             <Pencil className="h-4 w-4" aria-hidden />
             {t('editEntry')}
-          </motion.button>
-          <motion.button
+          </button>
+          <button
             type="button"
-            whileTap={{ scale: 0.97 }}
             onClick={onDelete}
             aria-label={t('deleteEntry')}
-            className="btn h-11 min-h-0 shrink-0 border border-danger/30 bg-danger/10 px-4 text-danger hover:bg-danger/15"
+            className="btn-danger min-h-touch w-touch shrink-0 px-0"
           >
             <Trash2 className="h-4 w-4" aria-hidden />
-          </motion.button>
+          </button>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }

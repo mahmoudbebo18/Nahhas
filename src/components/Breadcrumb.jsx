@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Home } from 'lucide-react'
 import { useTrail } from '@/context/TrailContext'
 import { useI18n } from '@/context/I18nContext'
 import Bidi from './Bidi'
+import { SCREEN_WIDTH } from './Screen'
 
 /**
  * "Home › Tower B › Floor 03 › بند عمل 1 › Blockwork"
@@ -12,12 +13,20 @@ import Bidi from './Bidi'
  * engineer four levels deep from having to back out one screen at a time to
  * switch buildings. On a phone the trail overflows, so it scrolls horizontally
  * and auto-pins to the deepest crumb.
+ *
+ * It belongs to the walk only. The project list is where the walk starts, and
+ * the review basket sits outside it — on either, a trail would claim the
+ * engineer is still inside a task they have left.
  */
+const OUTSIDE_THE_WALK = [/^\/projects\/?$/, /^\/entries(\/|$)/]
+
 export default function Breadcrumb() {
   const { trail } = useTrail()
   const { t } = useI18n()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const scroller = useRef(null)
+  const hidden = OUTSIDE_THE_WALK.some((re) => re.test(pathname))
 
   const crumbs = []
   if (trail.project) {
@@ -60,9 +69,9 @@ export default function Breadcrumb() {
     if (!el) return
     const rtl = getComputedStyle(el).direction === 'rtl'
     el.scrollTo({ left: rtl ? -el.scrollWidth : el.scrollWidth, behavior: 'smooth' })
-  }, [deepest])
+  }, [deepest, hidden])
 
-  if (crumbs.length === 0) return null
+  if (hidden || crumbs.length === 0) return null
 
   return (
     <nav
@@ -71,16 +80,16 @@ export default function Breadcrumb() {
     >
       <ol
         ref={scroller}
-        className="no-scrollbar mx-auto flex max-w-2xl items-center gap-1 overflow-x-auto px-3 py-2"
+        className={`no-scrollbar mx-auto flex ${SCREEN_WIDTH} items-center gap-1 overflow-x-auto px-2`}
       >
         <li className="shrink-0">
           <button
             type="button"
             onClick={() => navigate('/projects')}
-            className="flex h-8 items-center gap-1 rounded-lg px-2 text-muted hover:bg-surface-2 hover:text-text"
+            className="icon-btn"
             aria-label={t('home')}
           >
-            <Home className="h-4 w-4" aria-hidden />
+            <Home className="h-5 w-5" aria-hidden />
           </button>
         </li>
 
@@ -88,13 +97,13 @@ export default function Breadcrumb() {
           const isLast = i === crumbs.length - 1
           return (
             <li key={crumb.key} className="flex shrink-0 items-center gap-1">
-              <ChevronRight className="rtl-flip h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
+              <ChevronRight className="rtl-flip h-4 w-4 shrink-0 text-subtle" aria-hidden />
               <button
                 type="button"
                 onClick={() => !isLast && navigate(crumb.to)}
                 disabled={isLast}
                 aria-current={isLast ? 'page' : undefined}
-                className={`h-8 max-w-[10rem] truncate rounded-lg px-2 text-[13px] font-medium ${
+                className={`h-touch min-w-touch max-w-[12rem] truncate rounded-control px-2 text-secondary font-medium ${
                   isLast
                     ? 'cursor-default text-text'
                     : 'text-muted hover:bg-surface-2 hover:text-text'

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useIsWide } from '@/hooks/useIsWide'
+import { useI18n } from '@/context/I18nContext'
 
 /**
  * Enter on a spring — it is a gesture-like arrival and a little overshoot
@@ -55,6 +56,8 @@ function panelMotion({ reduce, wide }) {
  * scrolls inside the sheet so the page behind never moves.
  */
 export default function Sheet({ open, onClose, title, children, footer }) {
+  const { t } = useI18n()
+  const closeLabel = t('close')
   const reduce = useReducedMotion()
   const wide = useIsWide()
   const panel = panelMotion({ reduce, wide })
@@ -94,8 +97,8 @@ export default function Sheet({ open, onClose, title, children, footer }) {
             aria-modal="true"
             aria-label={title}
             className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden
-                       rounded-t-3xl border border-border bg-surface shadow-sheet
-                       sm:rounded-3xl sm:shadow-modal"
+                       rounded-t-card border border-border bg-surface shadow-sheet
+                       sm:rounded-card sm:shadow-modal"
             {...panel}
             // Drag-to-dismiss is a thumb gesture; on a centred desktop dialog
             // it only fights text selection. (Reduced motion still keeps it —
@@ -107,15 +110,10 @@ export default function Sheet({ open, onClose, title, children, footer }) {
               if (info.offset.y > 110 || info.velocity.y > 700) onClose()
             }}
           >
-            <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-              <div className="absolute inset-x-0 top-1.5 mx-auto h-1 w-10 rounded-full bg-border-strong sm:hidden" />
-              <h2 className="flex-1 truncate pt-1 text-base font-semibold">{title}</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="-me-2 flex h-10 w-10 items-center justify-center rounded-xl text-muted hover:bg-surface-2 hover:text-text"
-                aria-label="Close"
-              >
+            <div className="flex items-center gap-3 border-b border-border py-2 pe-2 ps-4">
+              <div className="absolute inset-x-0 top-2 mx-auto h-1 w-8 rounded-full bg-border-strong sm:hidden" />
+              <h2 className="flex-1 truncate pt-1 text-title font-semibold">{title}</h2>
+              <button type="button" onClick={onClose} className="icon-btn" aria-label={closeLabel}>
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>

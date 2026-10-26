@@ -21,20 +21,18 @@ export default function ThemeToggle() {
   const label = isDark ? t('lightMode') : t('darkMode')
 
   return (
-    <motion.button
+    <button
       type="button"
       onClick={toggle}
-      whileTap={{ scale: 0.88 }}
-      transition={spring}
       aria-label={label}
       title={label}
       aria-pressed={isDark}
-      className="relative flex h-11 w-11 items-center justify-center rounded-xl
-                 text-header-fg/90 transition-colors hover:bg-white/10"
+      className="relative flex h-touch w-touch shrink-0 items-center justify-center rounded-control
+                 text-header-fg transition-colors hover:bg-white/10 active:bg-white/15"
     >
       <svg
         viewBox="0 0 24 24"
-        className="h-[22px] w-[22px] overflow-visible"
+        className="h-5 w-5 overflow-visible"
         fill="none"
         aria-hidden="true"
       >
@@ -66,7 +64,7 @@ export default function ThemeToggle() {
 
         <motion.g
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="1.75"
           strokeLinecap="round"
           initial={false}
           animate={isDark ? { opacity: 0, scale: 0.4, rotate: -60 } : { opacity: 1, scale: 1, rotate: 0 }}
@@ -85,6 +83,6 @@ export default function ThemeToggle() {
           ))}
         </motion.g>
       </svg>
-    </motion.button>
+    </button>
   )
 }

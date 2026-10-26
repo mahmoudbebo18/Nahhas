@@ -8,6 +8,7 @@ import ProjectsScreen from '@/screens/ProjectsScreen'
 import LevelsScreen from '@/screens/LevelsScreen'
 import ItemsScreen from '@/screens/ItemsScreen'
 import LegacyTasksScreen from '@/screens/LegacyTasksScreen'
+import TimelineScreen from '@/screens/TimelineScreen'
 import SubtasksScreen from '@/screens/SubtasksScreen'
 import ActionScreen from '@/screens/ActionScreen'
 import EntryFormScreen from '@/screens/EntryFormScreen'
@@ -24,6 +25,7 @@ import { useWhoami } from '@/api/queries'
  *   /projects/:projectId/levels
  *   /projects/:projectId/levels/:level/items
  *   /projects/:projectId/tasks            ← legacy, non-level-aware projects
+ *   /projects/:projectId/timeline         ← the project's plan as a Gantt chart
  *   /items/:taskId/subtasks
  *   /subtasks/:taskId                     ← action chooser
  *   /subtasks/:taskId/:type               ← material | expense | equipment | subcontractor
@@ -78,6 +80,7 @@ export default function App() {
           <Route path="/projects/:projectId/levels" element={<LevelsScreen />} />
           <Route path="/projects/:projectId/levels/:level/items" element={<ItemsScreen />} />
           <Route path="/projects/:projectId/tasks" element={<LegacyTasksScreen />} />
+          <Route path="/projects/:projectId/timeline" element={<TimelineScreen />} />
           <Route path="/items/:taskId/subtasks" element={<SubtasksScreen />} />
           <Route path="/subtasks/:taskId" element={<ActionScreen />} />
           <Route path="/subtasks/:taskId/photo" element={<PhotoScreen />} />

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle, Eye, EyeOff, KeyRound, LogIn } from 'lucide-react'
 import Screen from '@/components/Screen'
@@ -54,36 +53,29 @@ export default function SetupScreen() {
       : auth.error.message)
 
   return (
-    <Screen className="max-w-md">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="mt-6"
-      >
-        <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-raised">
-            <KeyRound className="h-7 w-7" aria-hidden />
+    <Screen width="compact">
+      <div className="mt-6">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-card bg-primary text-primary-fg">
+            <KeyRound className="h-6 w-6" aria-hidden />
           </div>
-          <h1 className="text-2xl font-bold">{t('setupTitle')}</h1>
-          <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted">{t('setupLead')}</p>
+          <h1 className="text-display font-bold">{t('setupTitle')}</h1>
+          <p className="mt-2 max-w-xs text-secondary text-muted">{t('setupLead')}</p>
         </div>
 
         {expired && (
-          <motion.p
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-[13px] font-medium leading-relaxed text-warning"
+          <p
+            className="mb-4 flex items-start gap-2 rounded-control border border-warning/30 bg-warning/10 p-3 text-secondary font-medium text-warning"
             role="status"
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             {t('sessionExpired')}
-          </motion.p>
+          </p>
         )}
 
         {!API_BASE_CONFIGURED && (
           <p
-            className="mb-4 rounded-xl border border-danger/30 bg-danger/10 p-3 text-[13px] leading-relaxed text-danger"
+            className="mb-4 rounded-control border border-danger/30 bg-danger/10 p-3 text-secondary text-danger"
             role="alert"
           >
             <strong className="block">{t('configMissing')}</strong>
@@ -92,7 +84,7 @@ export default function SetupScreen() {
           </p>
         )}
 
-        <form onSubmit={submit} className="card p-5">
+        <form onSubmit={submit} className="card p-6">
           <label className="field-label" htmlFor="login">
             {t('loginLabel')}
           </label>
@@ -114,12 +106,12 @@ export default function SetupScreen() {
             className="input ltr-value"
           />
           {fieldErrors.login && (
-            <p className="mt-1.5 text-[13px] font-medium text-danger" role="alert">
+            <p className="mt-2 text-secondary font-medium text-danger" role="alert">
               {fieldErrors.login}
             </p>
           )}
 
-          <label className="field-label mt-4" htmlFor="password">
+          <label className="field-label mt-6" htmlFor="password">
             {t('passwordLabel')}
           </label>
           <div className="relative">
@@ -142,34 +134,28 @@ export default function SetupScreen() {
             <button
               type="button"
               onClick={() => setReveal((r) => !r)}
-              className="absolute inset-y-0 end-0 flex w-12 items-center justify-center text-subtle hover:text-text"
+              className="absolute inset-y-0 end-0 flex w-12 items-center justify-center rounded-control text-subtle hover:text-text"
               aria-label={reveal ? t('hidePassword') : t('showPassword')}
             >
               {reveal ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
           {fieldErrors.password && (
-            <p className="mt-1.5 text-[13px] font-medium text-danger" role="alert">
+            <p className="mt-2 text-secondary font-medium text-danger" role="alert">
               {fieldErrors.password}
             </p>
           )}
 
           {auth.isError && (
-            <motion.p
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mt-3 text-[13px] font-medium text-danger"
-              role="alert"
-            >
+            <p className="mt-4 text-secondary font-medium text-danger" role="alert">
               {authMessage}
-            </motion.p>
+            </p>
           )}
 
-          <motion.button
+          <button
             type="submit"
-            whileTap={canSubmit ? { scale: 0.98 } : undefined}
             disabled={!canSubmit || !API_BASE_CONFIGURED}
-            className="btn-primary mt-4 w-full"
+            className="btn-primary mt-6 w-full"
           >
             {auth.isPending ? (
               <>
@@ -182,17 +168,11 @@ export default function SetupScreen() {
                 {t('signIn')}
               </>
             )}
-          </motion.button>
-
-          {/* <p className="mt-3 text-center text-[12px] leading-relaxed text-subtle">
-            {t('keyStoredNote')}
-          </p> */}
+          </button>
         </form>
 
-        <p className="mt-4 text-center text-[13px] leading-relaxed text-muted">
-          {t('forgotPassword')}
-        </p>
-      </motion.div>
+        <p className="mt-4 text-center text-secondary text-muted">{t('forgotPassword')}</p>
+      </div>
     </Screen>
   )
 }

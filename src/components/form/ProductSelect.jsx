@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
 import { Check, ChevronDown, PackageSearch, Search } from 'lucide-react'
 import Sheet from '../Sheet'
 import { EmptyState, ErrorState, ListSkeleton } from '../states'
@@ -31,25 +30,24 @@ export default function ProductSelect({ products, value, onChange, query, id }) 
 
   return (
     <>
-      <motion.button
+      <button
         type="button"
         id={id}
-        whileTap={{ scale: 0.99 }}
         onClick={() => {
           setSearch('')
           setOpen(true)
         }}
         disabled={query?.isPending || products.length === 0}
-        className="input flex items-center gap-3 py-3 text-start disabled:opacity-60"
+        className="input flex items-center gap-3 py-3 text-start disabled:opacity-45"
       >
         <span className="min-w-0 flex-1">
           {selected ? (
             <>
-              <span className="block truncate font-medium">
+              <span className="block break-words text-body font-medium">
                 <Bidi>{selected.name}</Bidi>
               </span>
               {(selected.quantity || selected.uom) && (
-                <span className="mt-0.5 block text-[13px] text-muted">
+                <span className="mt-1 block text-secondary text-muted">
                   {t('plannedQty')}: <span className="tnum">{formatNumber(selected.quantity)}</span>
                   {selected.uom ? ` ${selected.uom}` : ''}
                 </span>
@@ -62,14 +60,14 @@ export default function ProductSelect({ products, value, onChange, query, id }) 
           )}
         </span>
         <ChevronDown className="h-5 w-5 shrink-0 text-subtle" aria-hidden />
-      </motion.button>
+      </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title={t('selectProduct')}>
         {showSearch && (
           <div className="sticky top-0 z-10 border-b border-border bg-surface p-3">
             <div className="relative">
               <Search
-                className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-subtle"
+                className="pointer-events-none absolute inset-y-0 start-3 my-auto h-5 w-5 text-subtle"
                 aria-hidden
               />
               <input
@@ -77,7 +75,7 @@ export default function ProductSelect({ products, value, onChange, query, id }) 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('searchProducts')}
-                className="input ps-9"
+                className="input ps-10"
                 autoComplete="off"
               />
             </div>
@@ -102,30 +100,30 @@ export default function ProductSelect({ products, value, onChange, query, id }) 
               const isSelected = p.line_id === selected?.line_id
               return (
                 <li key={p.line_id}>
-                  <motion.button
+                  <button
                     type="button"
-                    whileTap={{ scale: 0.985 }}
                     onClick={() => {
                       onChange(p)
                       setOpen(false)
                     }}
-                    className={`flex w-full items-center gap-3 rounded-xl border p-3 text-start transition-colors ${
+                    aria-pressed={isSelected}
+                    className={`flex min-h-tap w-full items-center gap-3 rounded-control border p-3 text-start transition-colors ${
                       isSelected
-                        ? 'border-accent bg-accent-soft'
-                        : 'border-border bg-surface active:bg-surface-2'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border bg-surface hover:bg-surface-2 active:bg-surface-2'
                     }`}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium leading-snug">
+                      <span className="block break-words font-medium">
                         <Bidi>{p.name}</Bidi>
                       </span>
-                      <span className="mt-0.5 block text-[13px] text-muted">
+                      <span className="mt-1 block text-secondary text-muted">
                         {t('plannedQty')}: <span className="tnum">{formatNumber(p.quantity)}</span>
                         {p.uom ? ` ${p.uom}` : ''}
                       </span>
                     </span>
-                    {isSelected && <Check className="h-5 w-5 shrink-0 text-accent" aria-hidden />}
-                  </motion.button>
+                    {isSelected && <Check className="h-5 w-5 shrink-0 text-primary" aria-hidden />}
+                  </button>
                 </li>
               )
             })}

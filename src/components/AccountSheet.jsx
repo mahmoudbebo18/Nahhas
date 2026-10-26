@@ -1,4 +1,4 @@
-import { LogOut, KeyRound, Building2, Mail, FolderCheck } from 'lucide-react'
+import { LogOut, Building2, Mail, FolderCheck } from 'lucide-react'
 import Sheet from './Sheet'
 import { useAuth } from '@/context/AuthContext'
 import { useI18n } from '@/context/I18nContext'
@@ -24,8 +24,8 @@ export default function AccountSheet({ open, onClose }) {
   return (
     <Sheet open={open} onClose={onClose} title={t('signedInAs')}>
       <div className="p-4">
-        <div className="flex items-center gap-3 rounded-2xl bg-primary-soft p-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-fg">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-title font-bold text-primary-fg">
             {String(identity?.name ?? '?').trim().charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -34,7 +34,7 @@ export default function AccountSheet({ open, onClose }) {
               {!identity?.name && '—'}
             </p>
             {identity?.employee_id && (
-              <p className="text-[13px] text-muted">
+              <p className="tnum text-secondary text-muted">
                 {t('employeeRef')} {identity.employee_id}
               </p>
             )}
@@ -42,9 +42,9 @@ export default function AccountSheet({ open, onClose }) {
         </div>
 
         {rows.length > 0 && (
-          <dl className="mt-3 space-y-2">
+          <dl className="mt-4 space-y-2 border-t border-border pt-4">
             {rows.map(({ icon: Icon, value }) => (
-              <div key={value} className="flex items-center gap-2.5 px-1 text-sm text-muted">
+              <div key={value} className="flex items-center gap-2 text-secondary text-muted">
                 <Icon className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
                 <span className="truncate">{value}</span>
               </div>
@@ -52,18 +52,13 @@ export default function AccountSheet({ open, onClose }) {
           </dl>
         )}
 
-        {/* <p className="mt-4 flex items-start gap-2 rounded-xl bg-surface-2 p-3 text-[13px] leading-relaxed text-muted">
-          <KeyRound className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          {t('keyStoredNote')}
-        </p> */}
-
         <button
           type="button"
           onClick={() => {
             onClose()
             signOut()
           }}
-          className="btn mt-4 w-full border border-danger/30 bg-danger/10 text-danger hover:bg-danger/15"
+          className="btn-danger mt-6 w-full"
         >
           <LogOut className="rtl-flip h-4 w-4" aria-hidden />
           {t('signOut')}

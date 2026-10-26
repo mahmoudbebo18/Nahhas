@@ -41,36 +41,26 @@ export default function CopyButton({ value, label, className = '' }) {
 
   return (
     <span className={`relative inline-flex ${className}`}>
-      <motion.button
+      <button
         type="button"
-        whileTap={{ scale: 0.9 }}
         onClick={handleCopy}
         aria-label={label ?? t('copyName')}
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl
-                    transition-colors ${
-                      copied
-                        ? 'bg-success/15 text-success'
-                        : 'text-subtle hover:bg-surface-2 hover:text-text'
-                    }`}
+        className={`icon-btn ${copied ? 'bg-success/10 text-success hover:bg-success/10 hover:text-success' : 'text-subtle'}`}
       >
-        {copied ? (
-          <Check className="h-[18px] w-[18px]" aria-hidden />
-        ) : (
-          <Copy className="h-[18px] w-[18px]" aria-hidden />
-        )}
-      </motion.button>
+        {copied ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
+      </button>
 
       <AnimatePresence>
         {state && (
           <motion.span
             role="status"
-            initial={{ opacity: 0, y: 4, scale: 0.94 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 2, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             className={`pointer-events-none absolute bottom-full end-0 z-20 mb-1 whitespace-nowrap
-                        rounded-lg px-2 py-1 text-[11px] font-semibold shadow-overlay ${
-                          copied ? 'bg-success text-white' : 'bg-danger text-white'
+                        rounded-badge px-2 py-1 text-meta font-semibold shadow-overlay ${
+                          copied ? 'bg-text text-bg' : 'bg-danger text-bg'
                         }`}
           >
             {copied ? t('copied') : t('copyFailed')}

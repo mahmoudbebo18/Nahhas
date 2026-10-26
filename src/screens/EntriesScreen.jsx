@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { CheckCheck, ClipboardCheck, FolderOpen, Inbox, Send, Trash2 } from 'lucide-react'
+import { FolderOpen, Inbox, Send, Trash2 } from 'lucide-react'
 import Screen from '@/components/Screen'
 import Sheet from '@/components/Sheet'
+import Bidi from '@/components/Bidi'
 import Checkbox from '@/components/Checkbox'
+import Collapsible, { ExpandAllButton } from '@/components/Collapsible'
 import EntryCard from '@/components/EntryCard'
 import { EmptyState, ErrorState, ListSkeleton, Spinner } from '@/components/states'
 import { useToast } from '@/components/Toast'
 import { useConfirmEntries, useDeleteEntry, useMyEntries } from '@/api/queries'
 import { useI18n } from '@/context/I18nContext'
+import { useCollapsed } from '@/hooks/useCollapsed'
 
 /**
  * The review basket — GET /entries.
@@ -26,7 +28,10 @@ import { useI18n } from '@/context/I18nContext'
  * is always something the engineer chose rather than something they inherited.
  *
  * Grouping is by project → sub-task, which is how the engineer remembers the
- * work ("the material on Tower B floor 3"), not by entry type.
+ * work ("the material on Tower B floor 3"), not by entry type. Each group
+ * folds away and has its own checkbox, so a long day's basket can be worked
+ * through one location at a time. The sent history starts folded: it is
+ * reference, and open it would push the send button's subject off screen.
  */
 export default function EntriesScreen() {
   const { t } = useI18n()
@@ -45,9 +50,14 @@ export default function EntriesScreen() {
   const [picked, setPicked] = useState(() => new Set())
 
   const drafts = useMemo(() => query.data?.drafts ?? [], [query.data])
-  const sent = history.data?.confirmed ?? []
+  const sent = useMemo(() => history.data?.confirmed ?? [], [history.data])
 
   const draftGroups = useMemo(() => groupByTask(drafts), [drafts])
+  const sentGroups = useMemo(() => groupByTask(sent), [sent])
+
+  const draftsOpen = useCollapsed('entries:drafts', true)
+  const sentOpen = useCollapsed('entries:sent', false)
+  const sentGroupsOpen = useCollapsed('entries:sent-groups', true)
 
   // Drop ids that have left the basket — deleted here, or confirmed from
   // another device — so the button can never offer to send more than is there.
@@ -67,6 +77,17 @@ export default function EntriesScreen() {
       const next = new Set(prev)
       if (checked) next.add(lineId)
       else next.delete(lineId)
+      return next
+    })
+  }
+
+  function togglePickedMany(lineIds, checked) {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      for (const id of lineIds) {
+        if (checked) next.add(id)
+        else next.delete(id)
+      }
       return next
     })
   }
@@ -104,7 +125,27 @@ export default function EntriesScreen() {
   }
 
   return (
-    <Screen title={t('myEntries')} lead={t('reviewLead')}>
+    <Screen
+      title={t('myEntries')}
+      width="narrow"
+      // Beside the title, as on the items screen: it acts on the whole list
+      // of drafts, and a row of its own for one button pushed the first group
+      // down a screenful on a phone.
+      actions={
+        query.isSuccess &&
+        draftGroups.length > 1 && (
+          <ExpandAllButton
+            allOpen={draftGroups.every((g) => draftsOpen.isOpen(g.key))}
+            onChange={(open) =>
+              draftsOpen.setAll(
+                draftGroups.map((g) => g.key),
+                open,
+              )
+            }
+          />
+        )
+      }
+    >
       {query.isPending && <ListSkeleton rows={4} />}
 
       {query.isError && <ErrorState error={query.error} onRetry={query.refetch} />}
@@ -112,23 +153,29 @@ export default function EntriesScreen() {
       {query.isSuccess && (
         <>
           <section aria-labelledby="pending-heading">
-            <div className="mb-2 flex items-center justify-between gap-3">
+            {/* Tinted, unlike the neutral group bars below it: this is the
+                section the send button acts on, and "select all" sits inside
+                the bar because it selects this section and nothing else. */}
+            <div className="mb-3 flex min-h-[3.25rem] items-center gap-3 rounded-control border border-primary/25 bg-primary-soft pe-1 ps-4">
               <h2
                 id="pending-heading"
-                className="flex items-baseline gap-2 text-[13px] font-bold uppercase tracking-wide text-muted"
+                className="flex min-w-0 flex-1 items-baseline gap-2 text-body font-semibold text-primary"
               >
-                {t('pending')}
+                <span className="truncate">{t('pending')}</span>
                 {drafts.length > 0 && (
-                  <span className="tnum font-semibold text-accent">{drafts.length}</span>
+                  <span className="tnum shrink-0 text-secondary font-medium text-primary/75">
+                    {drafts.length}
+                  </span>
                 )}
               </h2>
               {drafts.length > 0 && (
                 <Checkbox
+                  className="pe-3 ps-1"
                   checked={allPicked}
                   indeterminate={picked.size > 0 && !allPicked}
                   onChange={toggleAll}
                   label={t('selectAll')}
-                  srLabel={t('selectAll')}
+                  labelClassName="text-primary"
                 />
               )}
             </div>
@@ -142,84 +189,99 @@ export default function EntriesScreen() {
                 // back into the walk, so offer it here rather than making the
                 // engineer find the top bar.
                 action={
-                  <motion.button
-                    type="button"
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => navigate('/projects')}
-                    className="btn-primary mt-1"
-                  >
-                    <FolderOpen className="h-4 w-4" aria-hidden />
+                  <button type="button" onClick={() => navigate('/projects')} className="btn-primary">
+                    <FolderOpen className="h-5 w-5" aria-hidden />
                     {t('goToProjects')}
-                  </motion.button>
+                  </button>
                 }
               />
             ) : (
-              <div className="space-y-4">
-                {draftGroups.map((group, groupIndex) => (
-                  <div key={group.key}>
-                    <p className="mb-1.5 truncate px-1 text-[13px] font-semibold text-text">
-                      {group.title}
-                    </p>
-                    {group.subtitle && (
-                      <p className="mb-2 truncate px-1 text-[12px] text-subtle">
-                        {group.subtitle}
-                      </p>
-                    )}
-                    <ul className="space-y-2.5">
-                      {group.entries.map((entry, i) => (
-                        <li key={entry.line_id}>
-                          <EntryCard
-                            entry={entry}
-                            index={groupIndex + i}
-                            selectable
-                            selected={picked.has(entry.line_id)}
-                            onSelectChange={(checked) =>
-                              togglePicked(entry.line_id, checked)
-                            }
-                            onEdit={() =>
-                              navigate(`/entries/${entry.line_id}/edit`)
-                            }
-                            onDelete={() => setPendingDelete(entry)}
+              <>
+                <div className="space-y-4">
+                  {draftGroups.map((group) => {
+                    const ids = group.entries.map((e) => e.line_id)
+                    const pickedHere = ids.filter((id) => picked.has(id)).length
+                    return (
+                      <Collapsible
+                        key={group.key}
+                        open={draftsOpen.isOpen(group.key)}
+                        onToggle={() => draftsOpen.toggle(group.key)}
+                        title={<Bidi>{group.title}</Bidi>}
+                        subtitle={group.subtitle && <Bidi>{group.subtitle}</Bidi>}
+                        count={group.entries.length}
+                        leading={
+                          <Checkbox
+                            checked={pickedHere === ids.length}
+                            indeterminate={pickedHere > 0}
+                            onChange={(checked) => togglePickedMany(ids, checked)}
+                            srLabel={`${t('selectAll')}: ${group.subtitle || group.title}`}
                           />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+                        }
+                      >
+                        <ul className="space-y-3">
+                          {group.entries.map((entry) => (
+                            <li key={entry.line_id}>
+                              <EntryCard
+                                entry={entry}
+                                selectable
+                                selected={picked.has(entry.line_id)}
+                                onSelectChange={(checked) => togglePicked(entry.line_id, checked)}
+                                onEdit={() => navigate(`/entries/${entry.line_id}/edit`)}
+                                onDelete={() => setPendingDelete(entry)}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      </Collapsible>
+                    )
+                  })}
+                </div>
+              </>
             )}
           </section>
 
           {sent.length > 0 && (
-            <section aria-labelledby="sent-heading" className="mt-8">
-              <h2
-                id="sent-heading"
-                className="mb-2 flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-wide text-muted"
-              >
-                <CheckCheck className="h-4 w-4" aria-hidden />
-                {t('sent')}
-              </h2>
-              <ul className="space-y-2.5">
-                {sent.map((entry, i) => (
-                  <li key={entry.line_id}>
-                    {/* Flat list, so each row carries its own sub-task. */}
-                    <EntryCard entry={entry} index={i} readOnly showContext />
-                  </li>
+            <Collapsible
+              as="h2"
+              size="section"
+              className="mt-8"
+              open={sentOpen.isOpen('all')}
+              onToggle={() => sentOpen.toggle('all')}
+              title={t('sent')}
+              count={sent.length}
+            >
+              <div className="space-y-4">
+                {sentGroups.map((group) => (
+                  <Collapsible
+                    key={group.key}
+                    open={sentGroupsOpen.isOpen(group.key)}
+                    onToggle={() => sentGroupsOpen.toggle(group.key)}
+                    title={<Bidi>{group.title}</Bidi>}
+                    subtitle={group.subtitle && <Bidi>{group.subtitle}</Bidi>}
+                    count={group.entries.length}
+                  >
+                    <ul className="space-y-3">
+                      {group.entries.map((entry) => (
+                        <li key={entry.line_id}>
+                          <EntryCard entry={entry} readOnly />
+                        </li>
+                      ))}
+                    </ul>
+                  </Collapsible>
                 ))}
-              </ul>
-            </section>
+              </div>
+            </Collapsible>
           )}
 
           {drafts.length > 0 && (
             <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-border bg-bg/90 px-4 py-3 pb-safe backdrop-blur">
-              <motion.button
+              <button
                 type="button"
-                whileTap={picked.size === 0 ? undefined : { scale: 0.98 }}
                 onClick={() => setConfirming(true)}
                 // Nothing ticked is not an error worth explaining in a sheet —
                 // the checkboxes are right above the button.
                 disabled={confirm.isPending || picked.size === 0}
-                className="btn-accent w-full text-base"
+                className="btn-accent w-full"
               >
                 {confirm.isPending ? (
                   <>
@@ -229,39 +291,30 @@ export default function EntriesScreen() {
                 ) : (
                   <>
                     <Send className="rtl-flip h-5 w-5" aria-hidden />
-                    {allPicked ? t('confirmAll') : t('confirmSelected')} ({picked.size})
+                    {allPicked ? t('confirmAll') : t('confirmSelected')}{' '}
+                    <span className="tnum">({picked.size})</span>
                   </>
                 )}
-              </motion.button>
+              </button>
             </div>
           )}
         </>
       )}
 
-      <Sheet
-        open={confirming}
-        onClose={() => setConfirming(false)}
-        title={t('confirmTitle')}
-      >
+      <Sheet open={confirming} onClose={() => setConfirming(false)} title={t('confirmTitle')}>
         <div className="p-4">
-          <div className="mb-4 flex items-start gap-3 rounded-2xl bg-surface-2 p-4">
-            <ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden />
-            <p className="text-sm leading-relaxed text-muted">{t('confirmBody')}</p>
-          </div>
+          <p className="mb-4 text-secondary text-muted">{t('confirmBody')}</p>
           <button
             type="button"
             onClick={sendPicked}
             disabled={confirm.isPending || picked.size === 0}
             className="btn-accent w-full"
           >
-            {confirm.isPending ? <Spinner className="h-5 w-5" /> : null}
-            {allPicked ? t('confirmAll') : t('confirmSelected')} ({picked.size})
+            {confirm.isPending ? <Spinner className="h-5 w-5" /> : <Send className="rtl-flip h-5 w-5" aria-hidden />}
+            {allPicked ? t('confirmAll') : t('confirmSelected')}{' '}
+            <span className="tnum">({picked.size})</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            className="btn-ghost mt-2 w-full"
-          >
+          <button type="button" onClick={() => setConfirming(false)} className="btn-ghost mt-2 w-full">
             {t('cancel')}
           </button>
         </div>
@@ -273,23 +326,17 @@ export default function EntriesScreen() {
         title={t('deleteConfirmTitle')}
       >
         <div className="p-4">
-          <p className="mb-4 rounded-2xl bg-surface-2 p-4 text-sm leading-relaxed text-muted">
-            {t('deleteConfirmBody')}
-          </p>
+          <p className="mb-4 text-secondary text-muted">{t('deleteConfirmBody')}</p>
           <button
             type="button"
             onClick={() => discard(pendingDelete)}
             disabled={remove.isPending}
-            className="btn w-full border border-danger/30 bg-danger/10 text-danger hover:bg-danger/15"
+            className="btn-danger w-full"
           >
-            {remove.isPending ? <Spinner className="h-5 w-5" /> : <Trash2 className="h-4 w-4" />}
+            {remove.isPending ? <Spinner className="h-5 w-5" /> : <Trash2 className="h-5 w-5" aria-hidden />}
             {t('deleteEntry')}
           </button>
-          <button
-            type="button"
-            onClick={() => setPendingDelete(null)}
-            className="btn-ghost mt-2 w-full"
-          >
+          <button type="button" onClick={() => setPendingDelete(null)} className="btn-ghost mt-2 w-full">
             {t('cancel')}
           </button>
         </div>

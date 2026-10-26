@@ -1,49 +1,17 @@
-import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import Bidi from './Bidi'
 import CopyButton from './CopyButton'
 
 /**
- * The drill-down row used by every picker in the walk.
+ * A full-width drill-down row — for the legacy task tree, where the order is
+ * hierarchical and a grid of boxes would hide which node is inside which.
+ * Everything that is a flat list in the walk uses <Tile> instead.
  *
- * One row = one tap target, 64px+ tall, full width — sized for a gloved thumb
- * on a phone held one-handed. The chevron uses `rtl-flip` so it points the way
- * the flow actually goes in Arabic.
- *
- * `copyText` adds a second, smaller target at the end of the row. It is a
- * sibling of the drill-down button, not a child: a button inside a button is
- * invalid HTML and, in practice, swallows the inner tap on iOS Safari.
+ * The chevron uses `rtl-flip` so it points the way the flow actually goes in
+ * Arabic. `copyText` adds a second, smaller target at the end of the row; it
+ * is a sibling of the drill-down button, not a child — a button inside a
+ * button is invalid HTML and swallows the inner tap on iOS Safari.
  */
-
-/**
- * A brief cascade reads as "the list arrived" without delaying the first row.
- *
- * It is driven by the row's own index rather than by `staggerChildren` on the
- * <ul> for a reason: list data always lands *after* the list element has
- * mounted, and a child that inherits its variants from an already-mounted
- * parent is never told to run — it sits at the `initial` opacity of 0, blank
- * on screen but still tappable. Animating from the row itself makes the
- * reveal independent of when, and how often, the list gets refilled.
- */
-const STEP = 0.035
-const MAX_STEPS = 8 // a sixty-row project must not cascade for two seconds
-
-function rowEnter(index = 0) {
-  return {
-    initial: { opacity: 0, y: 10 },
-    animate: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: 'spring',
-        stiffness: 420,
-        damping: 34,
-        delay: Math.min(index, MAX_STEPS) * STEP,
-      },
-    },
-  }
-}
-
 export default function ListRow({
   title,
   subtitle,
@@ -52,83 +20,51 @@ export default function ListRow({
   leading,
   onClick,
   disabled = false,
-  /**
-   * Recede without being switched off — for a row that still leads somewhere
-   * useful but is not where the engineer is likely headed. `disabled` blocks
-   * the tap; this only lowers the row's voice.
-   */
+  /** Still leads somewhere, but probably not where the engineer is headed. */
   dimmed = false,
-  selected = false,
-  index = 0,
   /** Text the row's copy button puts on the clipboard — omit for no button. */
   copyText,
   copyLabel,
 }) {
   return (
-    <motion.div
-      {...rowEnter(index)}
-      whileTap={disabled ? undefined : { scale: 0.985 }}
-      transition={{ type: 'spring', stiffness: 600, damping: 30 }}
-      className={`card theme-tint flex w-full items-center
-                  transition-colors
-                  ${disabled ? 'opacity-50' : dimmed ? 'opacity-60' : ''}
-                  ${
-                    selected
-                      ? 'border-accent ring-2 ring-accent/25'
-                      : 'sm:hover:border-border-strong'
-                  }`}
+    <div
+      className={`card flex w-full items-center ${
+        disabled ? 'opacity-45' : 'hover:border-border-strong'
+      }`}
     >
       <button
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className={`flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-4 text-start
-                    ${disabled ? 'pointer-events-none' : selected ? '' : 'active:bg-surface-2'}`}
+        className="flex min-h-[4.5rem] min-w-0 flex-1 items-center gap-3 rounded-card p-4 text-start
+                   transition-colors active:bg-surface-2 disabled:pointer-events-none"
       >
         {leading && <div className="shrink-0">{leading}</div>}
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-semibold leading-tight">
+          <p className={`line-clamp-2 break-words font-semibold ${dimmed ? 'text-muted' : 'text-text'}`}>
             <Bidi>{title}</Bidi>
           </p>
 
           {subtitle && (
-            <p className="mt-1 truncate text-[13px] text-muted">
+            <p className="mt-1 truncate text-secondary text-muted">
               <Bidi>{subtitle}</Bidi>
             </p>
           )}
 
-          {badges?.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {badges.map((b) => (
-                <span
-                  key={b.key ?? b.label}
-                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
-                    b.tone === 'accent'
-                      ? 'bg-accent-soft text-accent'
-                      : b.tone === 'muted'
-                        ? 'bg-surface-2 text-muted'
-                        : 'bg-primary-soft text-primary'
-                  }`}
-                >
-                  {b.icon}
-                  {b.label}
-                </span>
-              ))}
-            </div>
-          )}
+          {badges?.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-2">{badges}</div>}
         </div>
 
-        {meta && <div className="shrink-0 text-end text-[13px] tnum text-muted">{meta}</div>}
+        {meta && <div className="tnum shrink-0 text-end text-secondary text-muted">{meta}</div>}
 
         <ChevronRight className="rtl-flip h-5 w-5 shrink-0 text-subtle" aria-hidden />
       </button>
 
       {copyText && (
-        <span className="flex shrink-0 items-center self-stretch border-s border-border px-1.5">
+        <span className="flex shrink-0 items-center self-stretch border-s border-border px-1">
           <CopyButton value={copyText} label={copyLabel} />
         </span>
       )}
-    </motion.div>
+    </div>
   )
 }

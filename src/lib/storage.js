@@ -11,6 +11,8 @@ export const KEYS = {
   identity: 'identity', // cached /auth/whoami payload, for instant boot
   theme: 'theme',
   lang: 'lang',
+  lastCurrency: 'lastCurrency', // id of the currency the last expense used
+  timelineZoom: 'timelineZoom', // day | week | month
 }
 
 export function readStored(key, fallback = null) {

@@ -108,11 +108,11 @@ export default function DatePicker({ id, value, onChange, min, withTime = false 
             commit(todayISO(), withTime ? nowRounded().split('T')[1] : undefined)
             close()
           }}
-          className="btn-ghost h-11 min-h-0 flex-1 text-sm"
+          className="btn-ghost min-h-touch flex-1 text-secondary"
         >
           {withTime ? t('now') : t('today')}
         </button>
-        <button type="button" onClick={close} className="btn-outline h-11 min-h-0 flex-1 text-sm">
+        <button type="button" onClick={close} className="btn-outline min-h-touch flex-1 text-secondary">
           {t('done')}
         </button>
       </div>
@@ -128,8 +128,8 @@ export default function DatePicker({ id, value, onChange, min, withTime = false 
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`input flex items-center gap-2.5 text-start ${
-          open ? 'border-accent ring-2 ring-accent/30' : ''
+        className={`input flex items-center gap-2 text-start ${
+          open ? 'border-primary ring-2 ring-primary/25' : ''
         }`}
       >
         <Icon className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
@@ -155,7 +155,7 @@ export default function DatePicker({ id, value, onChange, min, withTime = false 
                 scale: 0.98,
                 transition: { duration: 0.13, ease: 'easeIn' },
               }}
-              className="absolute start-0 top-full z-40 mt-2 w-[19.5rem] rounded-2xl border
+              className="absolute start-0 top-full z-40 mt-2 w-[19.5rem] rounded-card border
                          border-border bg-surface p-3 shadow-overlay"
             >
               {panel}

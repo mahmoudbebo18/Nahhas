@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useI18n } from '@/context/I18nContext'
 import {
@@ -111,13 +110,12 @@ export default function Calendar({ value, onSelect, min }) {
   const prevBlocked =
     Boolean(minDate) && new Date(cursor.getFullYear(), cursor.getMonth(), 0) < minDate
 
-  const navBtn =
-    'flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-text disabled:pointer-events-none disabled:opacity-25'
+  const navBtn = 'icon-btn disabled:opacity-25'
 
   return (
     <div className="select-none">
       <div className="mb-2 flex items-center gap-1">
-        <p className="flex-1 ps-1 text-[15px] font-semibold capitalize">{monthLabel(cursor, lang)}</p>
+        <p className="flex-1 ps-1 font-semibold capitalize">{monthLabel(cursor, lang)}</p>
         <button
           type="button"
           onClick={() => stepMonth(-1)}
@@ -134,7 +132,7 @@ export default function Calendar({ value, onSelect, min }) {
 
       <div className="mb-1 grid grid-cols-7 gap-1" aria-hidden>
         {weekdays.map((d, i) => (
-          <div key={i} className="py-1 text-center text-[12px] font-semibold text-subtle">
+          <div key={i} className="py-1 text-center text-meta font-semibold text-muted">
             {d}
           </div>
         ))}
@@ -155,11 +153,10 @@ export default function Calendar({ value, onSelect, min }) {
           const off = disabled(day)
 
           return (
-            <motion.button
+            <button
               key={key}
               type="button"
               data-day
-              whileTap={off ? undefined : { scale: 0.9 }}
               tabIndex={isSameDay(day, focused) ? 0 : -1}
               disabled={off}
               aria-label={dayLabel(day, lang)}
@@ -169,19 +166,19 @@ export default function Calendar({ value, onSelect, min }) {
                 setFocused(day)
                 onSelect(key)
               }}
-              className={`tnum flex h-11 items-center justify-center rounded-xl text-[15px]
+              className={`tnum flex h-touch items-center justify-center rounded-control
                           font-medium transition-colors focus-visible:ring-offset-0 ${
                             isSelected
-                              ? 'bg-accent font-bold text-accent-fg'
+                              ? 'bg-primary font-bold text-primary-fg'
                               : isToday
-                                ? 'font-bold text-accent ring-1 ring-inset ring-accent/50 hover:bg-surface-2'
+                                ? 'font-bold text-primary ring-1 ring-inset ring-primary/50 hover:bg-surface-2'
                                 : outside
                                   ? 'text-subtle hover:bg-surface-2'
                                   : 'text-text hover:bg-surface-2'
                           } ${off ? 'pointer-events-none opacity-25' : ''}`}
             >
               {dayNumber(day, lang)}
-            </motion.button>
+            </button>
           )
         })}
       </div>

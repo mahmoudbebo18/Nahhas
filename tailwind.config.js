@@ -58,14 +58,27 @@ export default {
         arabic: ['Avenir Arabic', 'Inter', 'Tahoma', 'sans-serif'],
         numeric: ['Inter', 'ui-monospace', 'monospace'],
       },
-      borderRadius: {
-        xl: '0.875rem',
-        '2xl': '1.125rem',
-        '3xl': '1.5rem',
+      // The type scale. Five sizes and no others — a size picked per screen is
+      // how a UI ends up with 11/12/13/14/15/17 all within one card. Sizes
+      // only: line-height is inherited from <body>, which sets it per script
+      // (Arabic needs more room above and below than Latin does).
+      fontSize: {
+        meta: '12px', // codes, counts, dates under a title
+        secondary: '13px', // supporting lines, labels, badges' bigger sibling
+        body: '15px', // default reading size, button text
+        title: '17px', // card and section titles
+        display: '22px', // the one screen title
       },
+      // The radius scale: badge < control < card. Nothing rounder than a card
+      // except a true circle (rounded-full) for avatars and counters.
+      borderRadius: {
+        badge: '6px',
+        control: '10px',
+        card: '14px',
+      },
+      // Cards are flat — a border, never a shadow. A shadow means "this floats
+      // above the page": sheets, toasts and popovers only.
       boxShadow: {
-        card: '0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.06)',
-        raised: '0 4px 12px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06)',
         sheet: '0 -8px 32px rgb(0 0 0 / 0.18)',
         // A sheet is anchored to the bottom edge, so its shadow only ever
         // spills upward. A centred dialog needs one that falls all round.
@@ -75,8 +88,10 @@ export default {
         overlay: '0 12px 32px -8px rgb(0 0 0 / 0.30), 0 2px 8px rgb(0 0 0 / 0.14)',
       },
       spacing: {
-        // Thumb-friendly minimum tap target, used as min-h on every control.
+        // Thumb-friendly height for full-width controls (buttons, inputs).
         tap: '3rem', // 48px
+        // The floor for anything pressable — icon buttons, crumbs, checkboxes.
+        touch: '2.75rem', // 44px
         'safe-b': 'env(safe-area-inset-bottom, 0px)',
       },
       screens: {

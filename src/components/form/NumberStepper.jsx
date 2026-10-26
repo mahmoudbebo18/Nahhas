@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion'
 import { Minus, Plus } from 'lucide-react'
 import { toLatinDigits } from '@/lib/text'
+import { useI18n } from '@/context/I18nContext'
 
 /**
  * Quantity/amount input with ± buttons.
@@ -19,6 +19,9 @@ export default function NumberStepper({
   suffix,
   placeholder = '0',
 }) {
+  const { t } = useI18n()
+  const decreaseLabel = t('decrease')
+  const increaseLabel = t('increase')
   const nudge = (delta) => {
     const current = Number(value)
     const base = Number.isNaN(current) || value === '' ? 0 : current
@@ -27,20 +30,19 @@ export default function NumberStepper({
   }
 
   const btn =
-    'flex h-tap w-12 shrink-0 items-center justify-center text-muted transition-colors active:bg-surface-2 disabled:opacity-35'
+    'flex h-tap w-12 shrink-0 items-center justify-center text-muted transition-colors hover:bg-surface-2 active:bg-surface-2 disabled:opacity-45'
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-xl border border-border bg-surface focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
-      <motion.button
+    <div className="theme-tint flex items-stretch overflow-hidden rounded-control border border-border-strong bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25">
+      <button
         type="button"
-        whileTap={{ scale: 0.9 }}
         onClick={() => nudge(-step)}
         disabled={Number(value) <= min}
         className={`${btn} border-e border-border`}
-        aria-label="Decrease"
+        aria-label={decreaseLabel}
       >
         <Minus className="h-5 w-5" aria-hidden />
-      </motion.button>
+      </button>
 
       <div className="flex min-w-0 flex-1 items-center">
         <input
@@ -61,26 +63,25 @@ export default function NumberStepper({
           // (`focus-within` above), so the global :focus-visible ring would
           // land a second, boxier one inside it. Cancel it here only — focus
           // stays just as visible, on the element that reads as the field.
-          className="tnum w-full min-w-0 border-0 bg-transparent px-2 text-center text-lg
+          className="tnum h-tap w-full min-w-0 border-0 bg-transparent px-2 text-center text-title
                      font-semibold text-text outline-none placeholder:text-subtle
                      focus-visible:ring-0 focus-visible:ring-offset-0"
         />
         {suffix && (
-          <span className="pe-3 text-sm font-medium text-muted" aria-hidden>
+          <span className="pe-3 text-secondary font-medium text-muted" aria-hidden>
             {suffix}
           </span>
         )}
       </div>
 
-      <motion.button
+      <button
         type="button"
-        whileTap={{ scale: 0.9 }}
         onClick={() => nudge(step)}
         className={`${btn} border-s border-border`}
-        aria-label="Increase"
+        aria-label={increaseLabel}
       >
         <Plus className="h-5 w-5" aria-hidden />
-      </motion.button>
+      </button>
     </div>
   )
 }

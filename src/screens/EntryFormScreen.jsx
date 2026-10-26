@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { PackageSearch } from 'lucide-react'
 import Screen from '@/components/Screen'
 import Field from '@/components/form/Field'
@@ -8,11 +7,18 @@ import ProductSelect from '@/components/form/ProductSelect'
 import NumberStepper from '@/components/form/NumberStepper'
 import { DateField, DateTimeField } from '@/components/form/DateTimeField'
 import AttachmentPicker from '@/components/form/AttachmentPicker'
+import AmountField from '@/components/form/AmountField'
 import SubmitBar from '@/components/form/SubmitBar'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import SuccessSheet from './SuccessSheet'
 import { ENTRY_TYPES, isEntryType } from '@/api/entryTypes'
-import { useCreateEntry, useMyEntries, useProducts, useUpdateEntry } from '@/api/queries'
+import {
+  useCreateEntry,
+  useCurrencies,
+  useMyEntries,
+  useProducts,
+  useUpdateEntry,
+} from '@/api/queries'
 import { useI18n } from '@/context/I18nContext'
 import { useTrail } from '@/context/TrailContext'
 import { useToast } from '@/components/Toast'
@@ -25,6 +31,7 @@ import {
   toApiDateTime,
 } from '@/lib/datetime'
 import Bidi from '@/components/Bidi'
+import { KEYS, readStored, writeStored } from '@/lib/storage'
 
 /**
  * One screen for all four entry types.
@@ -34,7 +41,7 @@ import Bidi from '@/components/Bidi'
  * conditional blocks rather than four near-identical files that would drift.
  *
  *   material      → product, qty, uom (from product), comments, date
- *   expense       → product, amount, comments, date, attachments
+ *   expense       → product, amount, currency, comments, date, attachments
  *   equipment     → product, start, end, comments, attachments
  *   subcontractor → product, start, end, qty, comments, attachments
  */
@@ -43,6 +50,7 @@ const blankFor = (type) => ({
   product: null,
   qty: type === 'subcontractor' ? '1' : '',
   amount: '',
+  currencyId: null, // null → resolved below from last-used / company default
   comments: '',
   date: todayISO(),
   start: nowRounded(),
@@ -83,6 +91,20 @@ export default function EntryFormScreen() {
   const products = productsQuery.data?.products ?? []
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
 
+  const currenciesQuery = useCurrencies(type === 'expense')
+  const currencies = currenciesQuery.data?.currencies ?? []
+  // The engineer's pick, else the currency their last expense used, else the
+  // company's — whichever is still active. Null until the list loads, in which
+  // case nothing is sent and the server applies the company currency itself.
+  const activeIds = currencies.map((c) => c.id)
+  const currencyId =
+    [form.currencyId, Number(readStored(KEYS.lastCurrency)), currenciesQuery.data?.default_id].find(
+      (id) => activeIds.includes(id),
+    ) ?? null
+  const rememberCurrency = () => {
+    if (type === 'expense' && currencyId) writeStored(KEYS.lastCurrency, String(currencyId))
+  }
+
   // Fill the form once, when the draft arrives. Keyed on the entry id alone:
   // a background re-fetch of the basket must never overwrite what the
   // engineer has already retyped into the fields.
@@ -103,6 +125,7 @@ export default function EntryFormScreen() {
         : null,
       qty: editing.qty ? String(editing.qty) : '',
       amount: editing.amount ? String(editing.amount) : '',
+      currencyId: editing.currency_id || null,
       comments: editing.comments || '',
       date: editing.date || todayISO(),
       start: fromApiDateTime(editing.start) || nowRounded(),
@@ -138,10 +161,16 @@ export default function EntryFormScreen() {
   // In edit mode the type is only known once the basket has loaded, so the
   // usual "unknown type → bounce" guard has to wait for it.
   if (editingId) {
-    if (basket.isPending) return <Screen><ListSkeleton rows={3} /></Screen>
+    if (basket.isPending) {
+      return (
+        <Screen width="narrow">
+          <ListSkeleton rows={3} />
+        </Screen>
+      )
+    }
     if (basket.isError) {
       return (
-        <Screen title={t('editEntry')}>
+        <Screen width="narrow" title={t('editEntry')}>
           <ErrorState error={basket.error} onRetry={basket.refetch} />
         </Screen>
       )
@@ -197,6 +226,12 @@ export default function EntryFormScreen() {
       return {
         ...base,
         amount: Number(form.amount),
+        // When correcting a draft, only send it if it actually changed: an
+        // entry whose currency has since been deactivated must keep it rather
+        // than be silently moved to whatever the picker fell back to.
+        ...(currencyId && (!editing || currencyId !== editing.currency_id)
+          ? { currency_id: currencyId }
+          : {}),
         date: form.date,
         attachments: form.attachments,
       }
@@ -234,6 +269,7 @@ export default function EntryFormScreen() {
         { lineId: editingId, ...buildPayload() },
         {
           onSuccess: () => {
+            rememberCurrency()
             toast.success(t('saved'))
             navigate('/entries')
           },
@@ -244,6 +280,7 @@ export default function EntryFormScreen() {
 
     create.mutate(buildPayload(), {
       onSuccess: (data) => {
+        rememberCurrency()
         setResult(data)
         toast.success(t('savedDraft'))
       },
@@ -262,30 +299,19 @@ export default function EntryFormScreen() {
   }
 
   // String-compared: the route param is a string, the trail holds a number.
-  const subtaskName =
-    String(trail.subtask?.taskId ?? '') === String(taskId) ? trail.subtask.name : null
-  const Icon = config.icon
-  const accentTile = config.tone === 'accent'
+  // In edit mode the entry names its own sub-task; otherwise the trail does.
+  const subtaskName = editing
+    ? editing.task
+    : String(trail.subtask?.taskId ?? '') === String(taskId)
+      ? trail.subtask.name
+      : null
 
   return (
-    <Screen>
-      <header className="mb-5 flex items-center gap-3">
-        <span
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-            accentTile ? 'bg-accent-soft text-accent' : 'bg-primary-soft text-primary'
-          }`}
-        >
-          <Icon className="h-6 w-6" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold leading-tight">{t(type)}</h1>
-          {subtaskName && (
-            <p className="mt-0.5 truncate text-sm text-muted">
-              <Bidi>{subtaskName}</Bidi>
-            </p>
-          )}
-        </div>
-      </header>
+    <Screen
+      width="narrow"
+      title={editingId ? `${t('editEntry')} · ${t(type)}` : t(type)}
+      meta={subtaskName ? <Bidi>{subtaskName}</Bidi> : undefined}
+    >
 
       {productsQuery.isPending && <ListSkeleton rows={3} />}
 
@@ -302,7 +328,7 @@ export default function EntryFormScreen() {
             <button
               type="button"
               onClick={() => navigate(`/subtasks/${taskId}`)}
-              className="btn-outline mt-1"
+              className="btn-outline"
             >
               {t('pickAnother')}
             </button>
@@ -311,7 +337,7 @@ export default function EntryFormScreen() {
       )}
 
       {productsQuery.isSuccess && products.length > 0 && (
-        <form onSubmit={submit} className="space-y-5">
+        <form onSubmit={submit} className="space-y-6">
           <Field label={t('product')} error={errors.product}>
             {(id) => (
               <ProductSelect
@@ -347,12 +373,14 @@ export default function EntryFormScreen() {
           {type === 'expense' && (
             <Field label={t('amount')} error={errors.amount}>
               {(id) => (
-                <NumberStepper
+                <AmountField
                   id={id}
                   value={form.amount}
                   onChange={(amount) => set({ amount })}
-                  step={50}
-                  placeholder="0.00"
+                  currencies={currencies}
+                  currencyId={currencyId}
+                  onCurrencyChange={(id) => set({ currencyId: id })}
+                  defaultCurrencyId={currenciesQuery.data?.default_id}
                 />
               )}
             </Field>
@@ -378,16 +406,12 @@ export default function EntryFormScreen() {
               </Field>
 
               {durationPreview && !errors.end && (
-                <motion.p
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="-mt-2 flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-[13px] text-muted"
-                >
+                <p className="-mt-2 flex flex-wrap items-center gap-x-2 rounded-control bg-surface-2 px-3 py-2 text-secondary text-muted">
                   <span className="font-semibold text-text">{t('duration')}</span>
                   <span className="tnum">{durationPreview}</span>
-                  <span className="text-subtle">·</span>
-                  <span className="text-subtle">{t('durationNote')}</span>
-                </motion.p>
+                  <span aria-hidden>·</span>
+                  <span>{t('durationNote')}</span>
+                </p>
               )}
             </>
           )}

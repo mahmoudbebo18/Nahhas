@@ -24,6 +24,9 @@ export const qk = {
   availability: (taskId) => ['subtask', taskId, 'availability'],
   products: (taskId, type) => ['subtask', taskId, 'products', type],
   entries: ['entries'],
+  currencies: ['currencies'],
+  today: (projectId, mode) => ['project', projectId, 'today', mode],
+  timeline: (projectId) => ['project', projectId, 'timeline'],
 }
 
 // Site data changes on the hour, not the second. Five minutes keeps the walk
@@ -135,7 +138,10 @@ export function useLegacyTasks(projectId, enabled = true) {
  * The sub-task list already embeds this map per child, but the entry hub is
  * also reachable by deep link and survives a refresh, so it asks for its own
  * copy rather than depending on having walked the list. One small response,
- * cached for the same window as the walk.
+ * cached for the same window as the walk. It also carries the sub-task's name,
+ * which is what the hub falls back to when there is no trail to read it from,
+ * and its state and planned dates — with the work item's (`item`) for a
+ * sub-task the office has not planned on its own.
  */
 export function useSubtaskAvailability(taskId) {
   return useQuery({
@@ -143,7 +149,57 @@ export function useSubtaskAvailability(taskId) {
     queryFn: ({ signal }) => api.get(`/subtasks/${taskId}/availability`, { signal }),
     enabled: Boolean(taskId),
     staleTime: LIST_STALE,
-    select: (data) => data?.available ?? null,
+    select: (data) => ({
+      available: data?.available ?? null,
+      name: data?.name || null,
+      state: data?.state || null,
+      date_start: data?.date_start || null,
+      date_end: data?.date_end || null,
+      closed_on: data?.closed_on || null,
+      item: data?.item || null,
+    }),
+  })
+}
+
+/**
+ * Which tasks count as "today's": `active` — today falls inside the planned
+ * range — or `due` — the deadline is today. The server answers both; this is
+ * the one line to change if the client asks for the other.
+ */
+/**
+ * GET /projects/<id>/timeline — every task of the project with its planned
+ * range, flat with `parent_id`, for the project's Gantt chart.
+ */
+export function useTimeline(projectId) {
+  return useQuery({
+    queryKey: qk.timeline(projectId),
+    queryFn: ({ signal }) => api.get(`/projects/${projectId}/timeline`, { signal }),
+    enabled: Boolean(projectId),
+    staleTime: LIST_STALE,
+  })
+}
+
+export const TODAY_MODE = 'active'
+
+/**
+ * GET /tasks/today?project_id= — one project's open tasks the office planned
+ * for today, plus its overdue ones. The device's timezone goes along so the
+ * server's "today" is the same day the dates render in.
+ */
+export function useTodayTasks(projectId, mode = TODAY_MODE) {
+  return useQuery({
+    queryKey: qk.today(projectId, mode),
+    queryFn: ({ signal }) =>
+      api.get(
+        `/tasks/today${qs({
+          project_id: projectId,
+          mode,
+          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        })}`,
+        { signal },
+      ),
+    enabled: Boolean(projectId),
+    staleTime: LIST_STALE,
   })
 }
 
@@ -157,6 +213,20 @@ export function useProducts(taskId, entryType) {
       api.get(`/subtasks/${taskId}/products${qs({ type: param })}`, { signal }),
     enabled: Boolean(taskId && param),
     staleTime: LIST_STALE,
+  })
+}
+
+/**
+ * Active currencies for the expense form, plus `default_id` (the company
+ * currency). Changes only when the office activates one in Odoo, so it is
+ * cached for the session.
+ */
+export function useCurrencies(enabled = true) {
+  return useQuery({
+    queryKey: qk.currencies,
+    queryFn: ({ signal }) => api.get('/currencies', { signal }),
+    enabled,
+    staleTime: Infinity,
   })
 }
 
@@ -258,6 +328,29 @@ export function useConfirmEntries() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.entries })
       queryClient.invalidateQueries({ queryKey: ['item'], exact: false })
+    },
+  })
+}
+
+/* -- closing a task ------------------------------------------------------- */
+
+/**
+ * POST /tasks/<id>/done — mark a work item or sub-task Done. A work item takes
+ * its open sub-tasks with it. Refused with 409 (`body.code === 'drafts'`, with
+ * `draft_count` / `own_draft_count`) while drafts are waiting on it.
+ *
+ * The state shows on every list the task appears in — the walk, today's
+ * tasks, the timeline — so all of them are refreshed.
+ */
+export function useCloseTask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    retry: false,
+    mutationFn: (taskId) => api.post(`/tasks/${taskId}/done`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['item'] })
+      queryClient.invalidateQueries({ queryKey: ['subtask'] })
+      queryClient.invalidateQueries({ queryKey: ['project'] })
     },
   })
 }

@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Check, Loader2 } from 'lucide-react'
 import { useI18n } from '@/context/I18nContext'
 
@@ -15,12 +14,11 @@ export default function SubmitBar({ onSubmit, pending, disabled, label }) {
 
   return (
     <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-border bg-bg/90 px-4 py-3 pb-safe backdrop-blur">
-      <motion.button
+      <button
         type="submit"
-        whileTap={pending || disabled ? undefined : { scale: 0.98 }}
         onClick={onSubmit}
         disabled={pending || disabled}
-        className="btn-accent w-full text-base"
+        className="btn-accent w-full"
       >
         {pending ? (
           <>
@@ -33,7 +31,7 @@ export default function SubmitBar({ onSubmit, pending, disabled, label }) {
             {label ?? t('submit')}
           </>
         )}
-      </motion.button>
+      </button>
     </div>
   )
 }
